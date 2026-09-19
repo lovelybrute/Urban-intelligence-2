@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard, Map, Bus, AlertOctagon, Car, Users,
-  Camera, FileText, Cpu, Bell, Route, ChevronLeft, ChevronRight, X
+  Camera, FileText, Cpu, Bell, Route, ChevronLeft, ChevronRight, X, Network, Construction
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -35,6 +35,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'incidents', label: 'Incidents & ANPR', icon: Camera },
     { id: 'alerts', label: 'Alerts Center', icon: Bell, badge: alertsCount },
     { id: 'routes', label: 'Route Delays', icon: Route },
+    { id: 'od-analytics', label: 'OD Analytics', icon: Network },
+    { id: 'infrastructure', label: 'Infrastructure', icon: Construction },
     { id: 'reports', label: 'Incident Reports', icon: FileText },
     { id: 'mlops', label: 'MLOps Health', icon: Cpu },
   ];
@@ -195,8 +197,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-            <span>Bandwidth Saved</span>
-            <span className="mono" style={{ color: 'var(--accent-text)' }}>98.4% (est.)</span>
+            <span>Edge filtering</span>
+            <span className="mono" style={{ color: 'var(--accent-text)' }}>measurement pending</span>
           </div>
         </div>
       )}
