@@ -143,6 +143,24 @@ export const MOCK_EVENTS: UrbanEvent[] = [
     extra_metadata: { vehicle_type: 'car', speed_kmh: 62.4, anpr_triggered: true }
   },
   {
+    id: 107, event_id: 'EVT_HYD_DIV_07', event_type: 'missing_divider', severity: 'medium', confidence: 0,
+    latitude: 17.4300, longitude: 78.4550, timestamp: new Date(Date.now() - 31 * 60 * 1000).toISOString(),
+    bus_id: 5, status: 'detected', description: 'Road divider gap flagged for infrastructure review',
+    ai_reasoning: ['DEMO RULE: infrastructure-gap scenario; ML confidence not measured'], is_simulated: true, observation_count: 2
+  },
+  {
+    id: 108, event_id: 'EVT_HYD_ZEBRA_08', event_type: 'missing_zebra', severity: 'high', confidence: 0,
+    latitude: 17.3950, longitude: 78.4420, timestamp: new Date(Date.now() - 36 * 60 * 1000).toISOString(),
+    bus_id: 7, status: 'confirmed', description: 'Missing marked zebra crossing near high pedestrian footfall zone',
+    ai_reasoning: ['DEMO RULE: crosswalk deficiency; ML confidence not measured'], is_simulated: true, observation_count: 4
+  },
+  {
+    id: 109, event_id: 'EVT_HYD_SIGN_09', event_type: 'damaged_sign', severity: 'medium', confidence: 0,
+    latitude: 17.4200, longitude: 78.4850, timestamp: new Date(Date.now() - 43 * 60 * 1000).toISOString(),
+    bus_id: 2, status: 'detected', description: 'Damaged traffic signboard flagged for municipal inspection',
+    ai_reasoning: ['DEMO RULE: signboard deficiency; ML confidence not measured'], is_simulated: true, observation_count: 1
+  },
+  {
     id: 106,
     event_id: 'EVT_HYD_ANPR_06',
     event_type: 'vehicle_violation',
