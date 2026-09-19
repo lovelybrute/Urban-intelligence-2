@@ -16,6 +16,8 @@ import { AlertsView } from './views/AlertsView';
 import { RoutesView } from './views/RoutesView';
 import { ReportsView } from './views/ReportsView';
 import { MlOpsView } from './views/MlOpsView';
+import { OdAnalyticsView } from './views/OdAnalyticsView';
+import { InfrastructureView } from './views/InfrastructureView';
 
 import {
   apiClient, DEMO_MODE, MOCK_BUSES, MOCK_ROUTES,
@@ -31,7 +33,7 @@ const getInitialViewMode = (): 'landing' | 'dashboard' => {
 
 const getInitialTab = (): string => {
   const hash = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '';
-  const validTabs = ['overview', 'live-map', 'fleet', 'roads', 'traffic', 'safety', 'incidents', 'alerts', 'routes', 'reports', 'mlops'];
+  const validTabs = ['overview', 'live-map', 'fleet', 'roads', 'traffic', 'safety', 'incidents', 'alerts', 'routes', 'od-analytics', 'infrastructure', 'reports', 'mlops'];
   return validTabs.includes(hash) ? hash : 'overview';
 };
 
@@ -63,7 +65,7 @@ export const App: React.FC = () => {
         setViewMode('landing');
       } else {
         setViewMode('dashboard');
-        const validTabs = ['overview', 'live-map', 'fleet', 'roads', 'traffic', 'safety', 'incidents', 'alerts', 'routes', 'reports', 'mlops'];
+        const validTabs = ['overview', 'live-map', 'fleet', 'roads', 'traffic', 'safety', 'incidents', 'alerts', 'routes', 'od-analytics', 'infrastructure', 'reports', 'mlops'];
         if (validTabs.includes(hash)) {
           setActiveTab(hash);
         }
@@ -377,6 +379,12 @@ export const App: React.FC = () => {
               {activeTab === 'alerts' && <AlertsView alerts={alerts} />}
 
               {activeTab === 'routes' && <RoutesView routes={routes} />}
+
+              {activeTab === 'od-analytics' && <OdAnalyticsView routes={routes} />}
+
+              {activeTab === 'infrastructure' && (
+                <InfrastructureView events={events} roadSegments={roadSegments} maintenanceQueue={maintenanceQueue} />
+              )}
 
               {activeTab === 'reports' && (
                 <ReportsView
