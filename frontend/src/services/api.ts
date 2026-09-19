@@ -217,8 +217,7 @@ async function getCollection<T>(path: string, demoData: T[]): Promise<T[]> {
     if (!Array.isArray(data)) throw new Error('Unexpected API response');
     return data as T[];
   } catch (err) {
-    console.warn(`Connection to ${path} failed, falling back to demo data:`, err);
-    return demoData;
+    throw new Error(`Unable to load ${path}`, { cause: err });
   }
 }
 
@@ -288,4 +287,5 @@ export const apiClient = {
     }
   }
 };
+
 

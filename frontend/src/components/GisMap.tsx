@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Bus, Route, UrbanEvent } from '../types';
-import { Layers } from 'lucide-react';
+import React, { useEffect, useRef, useState } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { Bus, Route, UrbanEvent } from "../types";
+import { Layers } from "lucide-react";
 
 interface GisMapProps {
   buses: Bus[];
@@ -19,12 +19,14 @@ export const GisMap: React.FC<GisMapProps> = ({
   events,
   onSelectEvent,
   selectedEventId,
-  height = 'calc(100vh - 140px)'
+  height = "calc(100vh - 140px)",
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const routesLayerRef = useRef<L.LayerGroup | null>(null);
+
+  const [layersOpen, setLayersOpen] = useState(false);
 
   // Layer filter toggles
   const [showBuses, setShowBuses] = useState(true);
@@ -40,25 +42,32 @@ export const GisMap: React.FC<GisMapProps> = ({
 
     // Hyderabad City Center: 17.4100, 78.4700
     const map = L.map(mapContainerRef.current, {
-      center: [17.4100, 78.4700],
+      center: [17.41, 78.47],
       zoom: 12,
-      zoomControl: false
+      zoomControl: false,
     });
 
     // Custom dark sleek map tiles (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/">CartoDB</a> &copy; OpenStreetMap contributors',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map);
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      {
+        attribution:
+          '&copy; <a href="https://carto.com/">CartoDB</a> &copy; OpenStreetMap contributors',
+        maxZoom: 19,
+        subdomains: "abcd",
+      },
+    ).addTo(map);
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.control.zoom({ position: "bottomright" }).addTo(map);
 
     routesLayerRef.current = L.layerGroup().addTo(map);
     markersLayerRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
 
+    const resize = new ResizeObserver(() => map.invalidateSize());
+    resize.observe(mapContainerRef.current);
     return () => {
+      resize.disconnect();
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -71,19 +80,19 @@ export const GisMap: React.FC<GisMapProps> = ({
 
     if (showRoutes) {
       routes.forEach((rt, idx) => {
-        const colors = ['#2563eb', '#38bdf8', '#8b5cf6', '#3b82f6', '#10b981'];
+        const colors = ["#2563eb", "#38bdf8", "#8b5cf6", "#3b82f6", "#10b981"];
         const color = colors[idx % colors.length];
 
         const polyline = L.polyline(rt.waypoints, {
           color: color,
           weight: 3.5,
           opacity: 0.65,
-          dashArray: '6, 8'
+          dashArray: "6, 8",
         });
 
         polyline.bindTooltip(`<b>${rt.route_number}:</b> ${rt.name}`, {
           sticky: true,
-          className: 'panel'
+          className: "panel",
         });
 
         polyline.addTo(routesLayerRef.current!);
@@ -100,7 +109,7 @@ export const GisMap: React.FC<GisMapProps> = ({
     if (showBuses) {
       buses.forEach((bus) => {
         const busIcon = L.divIcon({
-          className: 'custom-bus-marker',
+          className: "custom-bus-marker",
           html: `
             <div style="
               width: 30px;
@@ -138,18 +147,20 @@ export const GisMap: React.FC<GisMapProps> = ({
             </div>
           `,
           iconSize: [30, 30],
-          iconAnchor: [15, 15]
+          iconAnchor: [15, 15],
         });
 
-        const marker = L.marker([bus.current_latitude, bus.current_longitude], { icon: busIcon });
+        const marker = L.marker([bus.current_latitude, bus.current_longitude], {
+          icon: busIcon,
+        });
         marker.bindPopup(`
           <div style="padding: 6px; font-family: Inter, system-ui, sans-serif;">
             <div style="font-weight: 700; color: #2563eb; font-size: 13px;">${bus.bus_number}</div>
-            <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 6px;">${bus.route_name || 'Active Corridor'}</div>
+            <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 6px;">${bus.route_name || "Active Corridor"}</div>
             <div style="font-size: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
               <div>Speed: <b>${bus.speed} km/h</b></div>
-              <div>Edge FPS: <b style="color:#22c55e;">${bus.edge_fps || 22.0}</b></div>
-              <div>Cams: <b>${bus.active_cameras || 4} HD</b></div>
+              <div>Edge FPS: <b style="color:#22c55e;">${bus.edge_fps ?? "Unavailable"}</b></div>
+              <div>Cams: <b>${bus.active_cameras ?? "Unavailable"} HD</b></div>
               <div>Load: <b>${bus.passenger_load_pct || 60}%</b></div>
             </div>
           </div>
@@ -161,29 +172,46 @@ export const GisMap: React.FC<GisMapProps> = ({
     // 2. Urban Events Markers
     events.forEach((evt) => {
       let isVisible = false;
-      let markerColor = '#d97706';
-      let iconSymbol = '⚠️';
+      let markerColor = "#d97706";
+      let iconSymbol = "⚠️";
 
-      if (['pothole', 'crack', 'damaged_road', 'damaged_divider', 'missing_sign'].includes(evt.event_type)) {
+      if (
+        [
+          "pothole",
+          "crack",
+          "damaged_road",
+          "damaged_divider",
+          "missing_sign",
+        ].includes(evt.event_type)
+      ) {
         isVisible = showDefects;
-        markerColor = evt.severity === 'critical' ? '#dc2626' : evt.severity === 'high' ? '#ea580c' : '#d97706';
-        iconSymbol = evt.event_type === 'pothole' ? '🕳️' : '⚠️';
-      } else if (evt.event_type === 'waterlogging') {
+        markerColor =
+          evt.severity === "critical"
+            ? "#dc2626"
+            : evt.severity === "high"
+              ? "#ea580c"
+              : "#d97706";
+        iconSymbol = evt.event_type === "pothole" ? "🕳️" : "⚠️";
+      } else if (evt.event_type === "waterlogging") {
         isVisible = showDefects;
-        markerColor = '#0284c7';
-        iconSymbol = '🌊';
-      } else if (evt.event_type === 'congestion') {
+        markerColor = "#0284c7";
+        iconSymbol = "🌊";
+      } else if (evt.event_type === "congestion") {
         isVisible = showCongestion;
-        markerColor = '#db2777';
-        iconSymbol = '🚗';
-      } else if (evt.event_type === 'pedestrian_risk') {
+        markerColor = "#db2777";
+        iconSymbol = "🚗";
+      } else if (evt.event_type === "pedestrian_risk") {
         isVisible = showSafety;
-        markerColor = '#eab308';
-        iconSymbol = '🚶';
-      } else if (['incident', 'rash_driving', 'hit_and_run', 'wrong_way'].includes(evt.event_type)) {
+        markerColor = "#eab308";
+        iconSymbol = "🚶";
+      } else if (
+        ["incident", "rash_driving", "hit_and_run", "wrong_way"].includes(
+          evt.event_type,
+        )
+      ) {
         isVisible = showIncidents;
-        markerColor = '#dc2626';
-        iconSymbol = '🚨';
+        markerColor = "#dc2626";
+        iconSymbol = "🚨";
       }
 
       if (!isVisible) return;
@@ -191,11 +219,11 @@ export const GisMap: React.FC<GisMapProps> = ({
       const isSelected = selectedEventId === evt.id;
 
       const eventIcon = L.divIcon({
-        className: 'custom-event-marker',
+        className: "custom-event-marker",
         html: `
           <div style="
-            width: ${isSelected ? '32px' : '26px'};
-            height: ${isSelected ? '32px' : '26px'};
+            width: ${isSelected ? "32px" : "26px"};
+            height: ${isSelected ? "32px" : "26px"};
             border-radius: 50%;
             background: ${markerColor};
             border: 2px solid #ffffff;
@@ -203,7 +231,7 @@ export const GisMap: React.FC<GisMapProps> = ({
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: ${isSelected ? '15px' : '12px'};
+            font-size: ${isSelected ? "15px" : "12px"};
             cursor: pointer;
             transition: all 0.2s ease;
           ">
@@ -211,100 +239,225 @@ export const GisMap: React.FC<GisMapProps> = ({
           </div>
         `,
         iconSize: [28, 28],
-        iconAnchor: [14, 14]
+        iconAnchor: [14, 14],
       });
 
-      const marker = L.marker([evt.latitude, evt.longitude], { icon: eventIcon });
-      marker.on('click', () => onSelectEvent(evt));
+      const marker = L.marker([evt.latitude, evt.longitude], {
+        icon: eventIcon,
+      });
+      marker.on("click", () => onSelectEvent(evt));
 
-      marker.bindTooltip(`
+      marker.bindTooltip(
+        `
         <div style="font-size: 11px; padding: 2px; font-family: Inter, system-ui, sans-serif;">
-          <b style="color:${markerColor}; text-transform:capitalize;">${evt.event_type.replace(/_/g, ' ')}</b> (${Math.round(evt.confidence * 100)}%)
+          <b style="color:${markerColor}; text-transform:capitalize;">${evt.event_type.replace(/_/g, " ")}</b> (${Math.round(evt.confidence * 100)}%)
           <br/><span style="color:#a1a1aa;">${evt.description.slice(0, 50)}...</span>
         </div>
-      `, { sticky: true });
+      `,
+        { sticky: true },
+      );
 
       marker.addTo(markersLayerRef.current!);
     });
-
-  }, [buses, events, selectedEventId, showBuses, showDefects, showCongestion, showSafety, showIncidents, onSelectEvent]);
+  }, [
+    buses,
+    events,
+    selectedEventId,
+    showBuses,
+    showDefects,
+    showCongestion,
+    showSafety,
+    showIncidents,
+    onSelectEvent,
+  ]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: height, borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: height,
+        borderRadius: "var(--radius-lg)",
+        overflow: "hidden",
+        border: "1px solid var(--border-subtle)",
+      }}
+    >
       {/* Map Container */}
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
 
       {/* Floating Layer Controls */}
       <div
-        className="panel"
+        className="panel map-layer-controls"
         style={{
-          position: 'absolute',
-          top: '16px',
-          left: '16px',
-          padding: '12px 14px',
+          position: "absolute",
+          top: "16px",
+          left: "16px",
+          padding: "12px 14px",
           zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '7px',
-          boxShadow: 'var(--shadow-lg)',
-          backdropFilter: 'blur(8px)',
+          display: "flex",
+          flexDirection: "column",
+          gap: "7px",
+          boxShadow: "var(--shadow-lg)",
+          backdropFilter: "blur(8px)",
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+        <button
+          onClick={() => setLayersOpen(!layersOpen)}
+          aria-expanded={layersOpen}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            color: "var(--text-primary)",
+            marginBottom: "4px",
+          }}
+        >
           <Layers size={14} color="var(--accent-text)" />
-          <span>GIS Map Filters</span>
-        </div>
+          <span>Map layers</span>
+        </button>
+        {layersOpen && (
+          <div style={{ display: "grid", gap: 8 }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                color: showBuses ? "var(--text-primary)" : "var(--text-muted)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showBuses}
+                onChange={(e) => setShowBuses(e.target.checked)}
+              />
+              <span>Fleet buses ({buses.length})</span>
+            </label>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', cursor: 'pointer', color: showBuses ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          <input type="checkbox" checked={showBuses} onChange={(e) => setShowBuses(e.target.checked)} />
-          <span>Active Buses ({buses.length})</span>
-        </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                color: showRoutes ? "var(--text-primary)" : "var(--text-muted)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showRoutes}
+                onChange={(e) => setShowRoutes(e.target.checked)}
+              />
+              <span>Corridor Routes ({routes.length})</span>
+            </label>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', cursor: 'pointer', color: showRoutes ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          <input type="checkbox" checked={showRoutes} onChange={(e) => setShowRoutes(e.target.checked)} />
-          <span>Corridor Routes ({routes.length})</span>
-        </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                color: showDefects
+                  ? "var(--text-primary)"
+                  : "var(--text-muted)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showDefects}
+                onChange={(e) => setShowDefects(e.target.checked)}
+              />
+              <span style={{ color: "#ea580c" }}>Road Defects & Water</span>
+            </label>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', cursor: 'pointer', color: showDefects ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          <input type="checkbox" checked={showDefects} onChange={(e) => setShowDefects(e.target.checked)} />
-          <span style={{ color: '#ea580c' }}>Road Defects & Water</span>
-        </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                color: showCongestion
+                  ? "var(--text-primary)"
+                  : "var(--text-muted)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showCongestion}
+                onChange={(e) => setShowCongestion(e.target.checked)}
+              />
+              <span style={{ color: "#db2777" }}>Bottlenecks</span>
+            </label>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', cursor: 'pointer', color: showCongestion ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          <input type="checkbox" checked={showCongestion} onChange={(e) => setShowCongestion(e.target.checked)} />
-          <span style={{ color: '#db2777' }}>Bottlenecks</span>
-        </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                color: showSafety ? "var(--text-primary)" : "var(--text-muted)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showSafety}
+                onChange={(e) => setShowSafety(e.target.checked)}
+              />
+              <span style={{ color: "#eab308" }}>Pedestrian Safety</span>
+            </label>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', cursor: 'pointer', color: showSafety ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          <input type="checkbox" checked={showSafety} onChange={(e) => setShowSafety(e.target.checked)} />
-          <span style={{ color: '#eab308' }}>Pedestrian Safety</span>
-        </label>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', cursor: 'pointer', color: showIncidents ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-          <input type="checkbox" checked={showIncidents} onChange={(e) => setShowIncidents(e.target.checked)} />
-          <span style={{ color: '#dc2626' }}>Incidents & ANPR</span>
-        </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                color: showIncidents
+                  ? "var(--text-primary)"
+                  : "var(--text-muted)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showIncidents}
+                onChange={(e) => setShowIncidents(e.target.checked)}
+              />
+              <span style={{ color: "#dc2626" }}>Incidents & ANPR</span>
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Legend at bottom left */}
       <div
         className="panel"
         style={{
-          position: 'absolute',
-          bottom: '16px',
-          left: '16px',
-          padding: '6px 12px',
-          fontSize: '0.72rem',
-          color: 'var(--text-secondary)',
+          position: "absolute",
+          bottom: "16px",
+          left: "16px",
+          padding: "6px 12px",
+          fontSize: "0.72rem",
+          color: "var(--text-secondary)",
           zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
         }}
       >
-        <span>Active Detections: <b style={{ color: 'var(--text-primary)' }}>{events.length}</b></span>
+        <span>
+          Detections:{" "}
+          <b style={{ color: "var(--text-primary)" }}>{events.length}</b>
+        </span>
         <span>•</span>
-        <span style={{ color: '#22c55e' }}>Live Telemetry Stream</span>
+        <span style={{ color: "#22c55e" }}>Recorded observations</span>
       </div>
     </div>
   );

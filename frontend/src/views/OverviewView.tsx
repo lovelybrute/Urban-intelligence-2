@@ -1,139 +1,152 @@
-import React from 'react';
-import { Bus, UrbanEvent, Alert, RoadSegment } from '../types';
+import React, { useState } from "react";
+import type { Bus, UrbanEvent, Alert, RoadSegment, Route } from "../types";
 import {
-  Activity, AlertTriangle, ShieldAlert, Cpu, ArrowUpRight, Eye
-} from 'lucide-react';
-import { GisMap } from '../components/GisMap';
-
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
+  Bus as BusIcon,
+  ChevronRight,
+  MapPin,
+  Search,
+  ShieldAlert,
+} from "lucide-react";
+import { GisMap } from "../components/GisMap";
 interface OverviewViewProps {
   buses: Bus[];
   events: UrbanEvent[];
   alerts: Alert[];
   roadSegments: RoadSegment[];
-  routes: any[];
+  routes: Route[];
   onSelectEvent: (event: UrbanEvent) => void;
   setActiveTab: (tab: string) => void;
 }
-
 export const OverviewView: React.FC<OverviewViewProps> = ({
   buses,
   events,
   alerts,
+  roadSegments,
   routes,
   onSelectEvent,
-  setActiveTab
+  setActiveTab,
 }) => {
-  const criticalCount = alerts.filter(a => a.category === 'critical' && a.status === 'active').length;
-  const highCount = alerts.filter(a => a.category === 'high' && a.status === 'active').length;
-  const potholesCount = events.filter(e => e.event_type === 'pothole').length;
-  const avgFps = (buses.reduce((acc, b) => acc + (b.edge_fps || 22.0), 0) / (buses.length || 1)).toFixed(1);
-  const activeCamsCount = buses.reduce((acc, b) => acc + (b.active_cameras || 4), 0);
-
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const active = buses.filter((b) => b.status === "active");
+  const telemetry = active.filter((b) => typeof b.edge_fps === "number");
+  const fps = telemetry.length
+    ? (
+        telemetry.reduce((sum, b) => sum + b.edge_fps!, 0) / telemetry.length
+      ).toFixed(1)
+    : "—";
+  const critical = alerts.filter(
+    (a) => a.category === "critical" && a.status === "active",
+  ).length;
+  const defects = events.filter((e) =>
+    [
+      "pothole",
+      "crack",
+      "damaged_road",
+      "waterlogging",
+      "road_hazard",
+    ].includes(e.event_type),
+  ).length;
+  const filtered = events
+    .filter(
+      (e) =>
+        (filter !== "priority" || ["critical", "high"].includes(e.severity)) &&
+        `${e.event_type.replaceAll("_", " ")} ${e.description} ${e.event_id}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+    )
+    .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+  const metrics = [
+    {
+      label: "Active sensing buses",
+      value: active.length,
+      detail: `${buses.length} buses in fleet`,
+      icon: BusIcon,
+      tab: "fleet",
+      tone: "blue",
+    },
+    {
+      label: "Road hazards",
+      value: defects,
+      detail: "Detections in current dataset",
+      icon: AlertTriangle,
+      tab: "roads",
+      tone: "amber",
+    },
+    {
+      label: "Critical alerts",
+      value: critical,
+      detail: "Awaiting attention",
+      icon: ShieldAlert,
+      tab: "alerts",
+      tone: "red",
+    },
+    {
+      label: "Edge processing",
+      value: fps,
+      detail: telemetry.length
+        ? `FPS · ${telemetry.length} reporting buses`
+        : "Telemetry not available",
+      icon: Activity,
+      tab: "mlops",
+      tone: "teal",
+    },
+  ];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Top Metric Cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '14px',
-        }}
-      >
-        {/* Card 1: Active Fleet */}
-        <div className="panel" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              Fleet Sensing Units
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--accent-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Activity size={16} color="var(--accent-text)" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span className="mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>{buses.length}</span>
-            <span style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 600 }}>Active Transit Buses</span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            {activeCamsCount} Optical HD Sensors Streamed
-          </div>
+    <div className="overview">
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">OPERATIONS / OVERVIEW</div>
+          <h1>
+            City command center<span>.</span>
+          </h1>
+          <p>
+            Your fleet, street conditions, and priority incidents in one place.
+          </p>
         </div>
-
-        {/* Card 2: Road Defects */}
-        <div className="panel" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              Road Defects Flagged
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--severity-high-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AlertTriangle size={16} color="var(--severity-high)" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span className="mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--severity-high)' }}>
-              {events.filter(e => ['pothole', 'crack', 'damaged_road', 'waterlogging'].includes(e.event_type)).length}
-            </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{potholesCount} Potholes</span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Spatial Multi-Bus Deduplication
-          </div>
-        </div>
-
-        {/* Card 3: Critical Hazards */}
-        <div className="panel" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              Active Critical Alerts
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--severity-critical-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ShieldAlert size={16} color="var(--severity-critical)" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span className="mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--severity-critical)' }}>{criticalCount}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--severity-high)', fontWeight: 500 }}>+ {highCount} High Priority</span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Triage & Incident Dispatch
-          </div>
-        </div>
-
-        {/* Card 4: Edge AI Performance */}
-        <div className="panel" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              Edge Inference Speed
-            </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--severity-low-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Cpu size={16} color="#22c55e" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span className="mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: '#22c55e' }}>{avgFps}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>FPS Fleet Average</span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            YOLOv8s Real-Time Inference
-          </div>
-        </div>
+        <button
+          className="btn btn-secondary"
+          onClick={() => setActiveTab("reports")}
+        >
+          Incident reports <ArrowUpRight size={16} />
+        </button>
       </div>
-
-      {/* Main Map & Live Detection Feed Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.75fr 1fr', gap: '16px' }} className="responsive-2col">
-        {/* Left Column: Live GIS Map */}
-        <div className="panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="status-dot status-dot-active" />
-              <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>Live Urban Sensing GIS Map</h3>
+      <div className="metric-grid">
+        {metrics.map((m) => (
+          <button
+            key={m.label}
+            className={`metric-card ${m.tone}`}
+            onClick={() => setActiveTab(m.tab)}
+          >
+            <div className="metric-top">
+              <span>{m.label}</span>
+              <m.icon size={19} />
+            </div>
+            <strong>{m.value}</strong>
+            <div className="metric-bottom">
+              <span>{m.detail}</span>
+              <ArrowUpRight size={15} />
+            </div>
+          </button>
+        ))}
+      </div>
+      <div className="operations-grid">
+        <section className="panel map-panel">
+          <div className="section-heading">
+            <div>
+              <h2>City sensing map</h2>
+              <span>
+                <MapPin size={13} /> Hyderabad, Telangana
+              </span>
             </div>
             <button
-              onClick={() => setActiveTab('live-map')}
               className="btn btn-secondary"
-              style={{ fontSize: '0.75rem', padding: '5px 10px', gap: '4px' }}
+              onClick={() => setActiveTab("live-map")}
             >
-              <span>Fullscreen Map</span>
-              <ArrowUpRight size={13} />
+              Expand map <ArrowUpRight size={15} />
             </button>
           </div>
           <GisMap
@@ -141,61 +154,135 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             routes={routes}
             events={events}
             onSelectEvent={onSelectEvent}
-            height="460px"
+            height="470px"
           />
-        </div>
-
-        {/* Right Column: Live Detection Feed */}
-        <div className="panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>Live Edge Ingestions</h3>
-            <span className="badge badge-accent" style={{ fontSize: '0.65rem' }}>METADATA STREAM</span>
+          <div className="map-caption">
+            <span>{routes.length} routes in view</span>
+            <span>Choose a marker to inspect evidence</span>
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '460px' }}>
-            {events.map((evt) => (
-              <div
-                key={evt.id}
-                onClick={() => onSelectEvent(evt)}
-                className="clickable-row"
-                style={{
-                  padding: '12px',
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-subtle)',
-                }}
+        </section>
+        <section className="panel feed-panel">
+          <div className="section-heading">
+            <div>
+              <h2>Detection feed</h2>
+              <span>{events.length} recorded events</span>
+            </div>
+            <span className="badge badge-neutral">Evidence queue</span>
+          </div>
+          <label className="feed-search">
+            <Search size={16} />
+            <input
+              type="search"
+              placeholder="Search detections…"
+              aria-label="Search detections"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <div className="feed-filters">
+            {[
+              ["all", "All events"],
+              ["priority", "High priority"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                aria-pressed={filter === id}
+                onClick={() => setFilter(id)}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span
-                    style={{
-                      fontWeight: 600,
-                      fontSize: '0.78rem',
-                      color: evt.severity === 'critical' ? 'var(--severity-critical)' : evt.severity === 'high' ? 'var(--severity-high)' : 'var(--text-primary)',
-                      textTransform: 'capitalize',
-                    }}
-                  >
-                    {evt.event_type.replace(/_/g, ' ')}
-                  </span>
-                  <span className="badge badge-neutral mono" style={{ fontSize: '0.6875rem' }}>
-                    {Math.round(evt.confidence * 100)}% Conf
-                  </span>
-                </div>
-
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.4 }}>
-                  {evt.description}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-                  <span>Bus #{evt.bus_id} • Front Optical</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-text)', fontWeight: 500 }}>
-                    <Eye size={12} /> Inspect
-                  </span>
-                </div>
-              </div>
+                {label}
+              </button>
             ))}
           </div>
-        </div>
+          <div className="event-feed">
+            {filtered.length ? (
+              filtered.map((e) => (
+                <button
+                  key={e.id}
+                  className="event-card"
+                  onClick={() => onSelectEvent(e)}
+                >
+                  <div className="event-card-top">
+                    <span className={`badge badge-${e.severity}`}>
+                      {e.severity}
+                    </span>
+                    <span>
+                      {new Date(e.timestamp).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone: "Asia/Kolkata",
+                      })}{" "}
+                      IST
+                    </span>
+                  </div>
+                  <h3>
+                    {e.event_type.replaceAll("_", " ")}
+                    <ChevronRight size={16} />
+                  </h3>
+                  <p>{e.description}</p>
+                  <div className="event-card-bottom">
+                    <span>
+                      Bus {e.bus_id} · {Math.round(e.confidence * 100)}%
+                      confidence
+                    </span>
+                    {e.is_simulated && <span>Simulated</span>}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="empty-state">
+                <Search size={25} />
+                <h3>No matching detections</h3>
+                <p>Try another search or select all events.</p>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
+      <section className="corridor-section">
+        <div className="section-heading">
+          <div>
+            <h2>Road condition watch</h2>
+            <span>Prioritize maintenance by corridor</span>
+          </div>
+          <button
+            className="btn btn-ghost"
+            onClick={() => setActiveTab("roads")}
+          >
+            View all roads <ArrowUpRight size={16} />
+          </button>
+        </div>
+        <div className="corridor-grid">
+          {roadSegments.slice(0, 3).map((r) => (
+            <button
+              className="corridor-card"
+              key={r.id}
+              onClick={() => setActiveTab("roads")}
+            >
+              <div>
+                <span>{r.segment_code}</span>
+                <span className={`condition-${r.condition}`}>
+                  {r.condition}
+                </span>
+              </div>
+              <h3>{r.road_name}</h3>
+              <div className="condition-track">
+                <span
+                  style={{
+                    width: `${Math.max(0, Math.min(100, r.condition_score))}%`,
+                  }}
+                />
+              </div>
+              <footer>
+                <span>{r.defect_count} defects recorded</span>
+                <strong>{r.condition_score}/100</strong>
+              </footer>
+            </button>
+          ))}
+          {!roadSegments.length && (
+            <p className="text-secondary">No road condition data available.</p>
+          )}
+        </div>
+      </section>
     </div>
   );
 };
