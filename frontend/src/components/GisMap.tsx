@@ -474,6 +474,8 @@ export const GisMap: React.FC<GisMapProps> = ({
 
   return (
     <div
+      className="gis-map-shell"
+      data-map-ready={mapReady ? "true" : "false"}
       style={{
         position: "relative",
         width: "100%",
@@ -487,6 +489,13 @@ export const GisMap: React.FC<GisMapProps> = ({
       <div
         ref={mapContainerRef}
         className="gis-map-canvas"
+        role="application"
+        aria-label="Interactive city map. Drag to move, pinch or use the zoom buttons to zoom."
+        tabIndex={0}
+        onPointerDown={() => {
+          mapInstanceRef.current?.dragging.enable();
+          mapInstanceRef.current?.touchZoom.enable();
+        }}
         style={{ width: "100%", height: "100%", position: "relative", zIndex: 1, cursor: "grab" }}
       />
 
@@ -688,7 +697,7 @@ export const GisMap: React.FC<GisMapProps> = ({
 
       {/* Legend at bottom left */}
       <div
-        className="panel"
+        className="panel map-status-legend"
         style={{
           position: "absolute",
           bottom: "16px",
