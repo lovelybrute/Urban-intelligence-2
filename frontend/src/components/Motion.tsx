@@ -17,36 +17,78 @@ export function MotionProvider({ children }: { children: ReactNode }) {
     () =>
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
   );
+  const [pageVisible, setPageVisible] = useState(
+    () => document.visibilityState !== "hidden",
+  );
+  const [fullEffects] = useState(() => {
+    const device = navigator as Navigator & { deviceMemory?: number };
+    const hasMouse = !window.matchMedia?.("(pointer: coarse)").matches;
+    const enoughCpu = (device.hardwareConcurrency || 8) >= 6;
+    const enoughMemory =
+      device.deviceMemory == null || device.deviceMemory >= 6;
+    return hasMouse && enoughCpu && enoughMemory;
+  });
   useEffect(() => {
     const query = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     const update = () => setReduced(query?.matches ?? false);
     query?.addEventListener("change", update);
     return () => query?.removeEventListener("change", update);
   }, []);
-  const enabled = !paused && !reduced;
+  useEffect(() => {
+    const update = () => setPageVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  const enabled = !paused && !reduced && pageVisible;
   useEffect(() => {
     document.documentElement.dataset.motion = enabled ? "on" : "off";
-  }, [enabled]);
+    document.documentElement.dataset.fx = fullEffects ? "full" : "balanced";
+  }, [enabled, fullEffects]);
   useEffect(() => {
-    if (!enabled || window.matchMedia?.("(pointer: coarse)").matches) return;
+    if (!enabled || !fullEffects) return;
     let current: HTMLElement | null = null;
     let frame = 0;
-    const clear = () => { if(current){ current.style.removeProperty("--tilt-x"); current.style.removeProperty("--tilt-y"); current.style.removeProperty("--glow-x"); current.style.removeProperty("--glow-y"); } current=null; };
-    const move = (event: PointerEvent) => {
-      const card = (event.target as HTMLElement)?.closest<HTMLElement>(".metric-card, .insight-tile, .journey-card, .model-card, .landing-feature");
-      if(card !== current) { cancelAnimationFrame(frame); clear(); current=card; }
-      if(!card) return;
-      const bounds=card.getBoundingClientRect();
-      const x=(event.clientX-bounds.left)/bounds.width;
-      const y=(event.clientY-bounds.top)/bounds.height;
-      cancelAnimationFrame(frame);
-      frame=requestAnimationFrame(()=>{card.style.setProperty("--tilt-x",`${(0.5-y)*7}deg`);card.style.setProperty("--tilt-y",`${(x-0.5)*7}deg`);card.style.setProperty("--glow-x",`${x*100}%`);card.style.setProperty("--glow-y",`${y*100}%`);});
+    const clear = () => {
+      if (current) {
+        current.style.removeProperty("--tilt-x");
+        current.style.removeProperty("--tilt-y");
+        current.style.removeProperty("--glow-x");
+        current.style.removeProperty("--glow-y");
+      }
+      current = null;
     };
-    document.addEventListener("pointermove",move,{passive:true});
-    document.addEventListener("pointerleave",clear);
-    window.addEventListener("blur",clear);
-    return ()=>{cancelAnimationFrame(frame);clear();document.removeEventListener("pointermove",move);document.removeEventListener("pointerleave",clear);window.removeEventListener("blur",clear);};
-  }, [enabled]);
+    const move = (event: PointerEvent) => {
+      const card = (event.target as HTMLElement)?.closest<HTMLElement>(
+        ".metric-card, .insight-tile, .journey-card, .model-card, .landing-feature",
+      );
+      if (card !== current) {
+        cancelAnimationFrame(frame);
+        clear();
+        current = card;
+      }
+      if (!card) return;
+      const bounds = card.getBoundingClientRect();
+      const x = (event.clientX - bounds.left) / bounds.width;
+      const y = (event.clientY - bounds.top) / bounds.height;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        card.style.setProperty("--tilt-x", `${(0.5 - y) * 7}deg`);
+        card.style.setProperty("--tilt-y", `${(x - 0.5) * 7}deg`);
+        card.style.setProperty("--glow-x", `${x * 100}%`);
+        card.style.setProperty("--glow-y", `${y * 100}%`);
+      });
+    };
+    document.addEventListener("pointermove", move, { passive: true });
+    document.addEventListener("pointerleave", clear);
+    window.addEventListener("blur", clear);
+    return () => {
+      cancelAnimationFrame(frame);
+      clear();
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerleave", clear);
+      window.removeEventListener("blur", clear);
+    };
+  }, [enabled, fullEffects]);
   const toggle = () =>
     setPaused((value) => {
       localStorage.setItem("urban-motion", value ? "on" : "paused");

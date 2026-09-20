@@ -1836,15 +1836,22 @@ html[data-motion="off"] .reveal {
   }
 }
 
-
 /* ==========================================================================
    COMMAND CENTER 3D / CINEMATIC UPGRADE
    Lightweight depth and motion without adding heavy 3D dependencies.
    ========================================================================== */
 body {
   background:
-    radial-gradient(circle at 15% -10%, rgba(94, 219, 196, 0.10), transparent 34%),
-    radial-gradient(circle at 90% 20%, rgba(92, 141, 255, 0.08), transparent 32%),
+    radial-gradient(
+      circle at 15% -10%,
+      rgba(94, 219, 196, 0.1),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 90% 20%,
+      rgba(92, 141, 255, 0.08),
+      transparent 32%
+    ),
     #081116;
 }
 
@@ -1853,7 +1860,11 @@ body {
   top: 0;
   backdrop-filter: blur(22px) saturate(135%);
   -webkit-backdrop-filter: blur(22px) saturate(135%);
-  background: linear-gradient(180deg, rgba(10, 24, 30, 0.94), rgba(10, 20, 25, 0.82));
+  background: linear-gradient(
+    180deg,
+    rgba(10, 24, 30, 0.94),
+    rgba(10, 20, 25, 0.82)
+  );
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.24);
 }
 
@@ -1862,7 +1873,12 @@ body {
   position: absolute;
   inset: auto 0 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(112, 222, 197, 0.55), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(112, 222, 197, 0.55),
+    transparent
+  );
 }
 
 .workspace-layout {
@@ -1880,12 +1896,15 @@ body {
     linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
   background-size: 38px 38px;
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,.7), transparent 88%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 88%);
 }
 
 .workspace-sidebar {
-  background:
-    linear-gradient(180deg, rgba(15, 30, 36, 0.96), rgba(8, 18, 23, 0.98));
+  background: linear-gradient(
+    180deg,
+    rgba(15, 30, 36, 0.96),
+    rgba(8, 18, 23, 0.98)
+  );
   box-shadow: 14px 0 40px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(18px);
 }
@@ -1916,8 +1935,11 @@ body {
 }
 
 .nav-item[aria-current] {
-  background:
-    linear-gradient(90deg, rgba(112, 222, 197, 0.13), rgba(112, 222, 197, 0.03));
+  background: linear-gradient(
+    90deg,
+    rgba(112, 222, 197, 0.13),
+    rgba(112, 222, 197, 0.03)
+  );
   box-shadow: inset 0 0 30px rgba(112, 222, 197, 0.04);
 }
 
@@ -1946,8 +1968,16 @@ body {
 .priority-banner {
   transform-style: preserve-3d;
   background:
-    radial-gradient(circle at 10% 10%, rgba(111, 222, 197, 0.18), transparent 32%),
-    radial-gradient(circle at 95% 10%, rgba(91, 145, 255, 0.10), transparent 30%),
+    radial-gradient(
+      circle at 10% 10%,
+      rgba(111, 222, 197, 0.18),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 95% 10%,
+      rgba(91, 145, 255, 0.1),
+      transparent 30%
+    ),
     linear-gradient(135deg, rgba(22, 41, 50, 0.95), rgba(13, 28, 35, 0.94));
   border: 1px solid rgba(119, 235, 210, 0.24);
   box-shadow:
@@ -1978,12 +2008,15 @@ body {
   overflow: hidden;
   min-height: 152px;
   border-radius: 18px;
-  background:
-    linear-gradient(145deg, rgba(24, 43, 51, 0.96), rgba(12, 26, 32, 0.96));
-  border: 1px solid rgba(255,255,255,0.09);
+  background: linear-gradient(
+    145deg,
+    rgba(24, 43, 51, 0.96),
+    rgba(12, 26, 32, 0.96)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.09);
   box-shadow:
-    0 18px 40px rgba(0,0,0,.22),
-    inset 0 1px 0 rgba(255,255,255,.035);
+    0 18px 40px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
   transform-style: preserve-3d;
 }
 
@@ -1991,9 +2024,14 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,.055) 45%, transparent 70%);
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.055) 45%,
+    transparent 70%
+  );
   transform: translateX(-130%);
-  transition: transform .75s cubic-bezier(.2,.7,.2,1);
+  transition: transform 0.75s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .metric-card::after {
@@ -2005,15 +2043,19 @@ body {
   top: -48px;
   border-radius: 28px;
   transform: rotate(28deg) translateZ(-1px);
-  background: radial-gradient(circle, rgba(112,222,197,.18), transparent 68%);
+  background: radial-gradient(
+    circle,
+    rgba(112, 222, 197, 0.18),
+    transparent 68%
+  );
   filter: blur(2px);
 }
 
 .metric-card:hover {
   transform: translateY(-9px) rotateX(2deg) rotateY(-2deg);
   box-shadow:
-    0 28px 65px rgba(0,0,0,.34),
-    0 0 0 1px rgba(112,222,197,.10);
+    0 28px 65px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(112, 222, 197, 0.1);
 }
 
 .metric-card:hover::before {
@@ -2028,7 +2070,7 @@ body {
 .metric-card > strong {
   font-size: clamp(34px, 3vw, 46px);
   letter-spacing: -2px;
-  text-shadow: 0 0 26px rgba(124,228,205,.08);
+  text-shadow: 0 0 26px rgba(124, 228, 205, 0.08);
 }
 
 .operations-grid {
@@ -2043,12 +2085,15 @@ body {
 .insight-tile,
 .model-card,
 .journey-card {
-  background:
-    linear-gradient(145deg, rgba(20, 37, 45, 0.94), rgba(11, 24, 30, 0.96));
-  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(
+    145deg,
+    rgba(20, 37, 45, 0.94),
+    rgba(11, 24, 30, 0.96)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
-    0 22px 55px rgba(0,0,0,.22),
-    inset 0 1px 0 rgba(255,255,255,.025);
+    0 22px 55px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
 .map-panel,
@@ -2057,14 +2102,14 @@ body {
 }
 
 .map-panel {
-  transform: rotateX(.35deg);
+  transform: rotateX(0.35deg);
 }
 
 .map-panel .leaflet-container {
   border-radius: 14px;
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.035),
-    0 16px 36px rgba(0,0,0,.22);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 16px 36px rgba(0, 0, 0, 0.22);
 }
 
 .feed-panel {
@@ -2078,7 +2123,7 @@ body {
   inset: 0 0 auto;
   height: 110px;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(112,222,197,.05), transparent);
+  background: linear-gradient(180deg, rgba(112, 222, 197, 0.05), transparent);
 }
 
 .event-card {
@@ -2086,14 +2131,18 @@ body {
   padding: 15px 8px;
   border-radius: 10px;
   transition:
-    transform .22s ease,
-    background .22s ease,
-    border-color .22s ease;
+    transform 0.22s ease,
+    background 0.22s ease,
+    border-color 0.22s ease;
 }
 
 .event-card:hover {
   transform: translateX(5px);
-  background: linear-gradient(90deg, rgba(112,222,197,.07), rgba(255,255,255,.015));
+  background: linear-gradient(
+    90deg,
+    rgba(112, 222, 197, 0.07),
+    rgba(255, 255, 255, 0.015)
+  );
 }
 
 .corridor-card {
@@ -2101,38 +2150,38 @@ body {
   overflow: hidden;
   border-radius: 16px;
   transition:
-    transform .25s ease,
-    box-shadow .25s ease,
-    border-color .25s ease;
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
 }
 
 .corridor-card:hover {
   transform: translateY(-7px) rotateX(1.5deg);
-  box-shadow: 0 26px 60px rgba(0,0,0,.30);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.3);
 }
 
 .condition-track {
   height: 6px;
-  background: rgba(255,255,255,.045);
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .condition-track span {
   background: linear-gradient(90deg, #66d8bd, #7caeff);
-  box-shadow: 0 0 18px rgba(102,216,189,.35);
+  box-shadow: 0 0 18px rgba(102, 216, 189, 0.35);
 }
 
 .btn-primary {
   background: linear-gradient(135deg, #9af0d7, #5bcab8);
   box-shadow:
     0 12px 30px rgba(91, 202, 184, 0.18),
-    inset 0 1px 0 rgba(255,255,255,.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow:
     0 16px 38px rgba(91, 202, 184, 0.26),
-    inset 0 1px 0 rgba(255,255,255,.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .panel,
@@ -2143,13 +2192,13 @@ body {
 
 .route-transition {
   transform-origin: 50% 0%;
-  animation: commandDeckEnter .58s cubic-bezier(.2,.7,.2,1) both;
+  animation: commandDeckEnter 0.58s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 @keyframes commandDeckEnter {
   from {
     opacity: 0;
-    transform: translateY(18px) rotateX(2deg) scale(.992);
+    transform: translateY(18px) rotateX(2deg) scale(0.992);
     filter: blur(5px);
   }
   to {
@@ -2160,8 +2209,13 @@ body {
 }
 
 @keyframes softPulseGrid {
-  0%,100% { opacity: .55; }
-  50% { opacity: .85; }
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }
 
 .workspace-layout::before {
@@ -2186,53 +2240,196 @@ body {
   }
 }
 
-
 /* Immersive city deck v2 */
-.overview { position:relative; isolation:isolate; }
-.overview::before{
- content:""; position:fixed; width:520px; height:520px; right:-180px; top:180px;
- border-radius:50%; pointer-events:none; z-index:-1;
- background:radial-gradient(circle,rgba(77,214,190,.13),transparent 68%);
- filter:blur(28px); animation:cityAura 10s ease-in-out infinite alternate;
+.overview {
+  position: relative;
+  isolation: isolate;
 }
-.page-heading{position:relative;overflow:hidden;padding:22px 24px;border:1px solid rgba(255,255,255,.07);border-radius:22px;background:linear-gradient(135deg,rgba(18,36,44,.74),rgba(8,20,26,.45));backdrop-filter:blur(16px)}
-.page-heading::after{content:"LIVE";position:absolute;right:24px;bottom:18px;font:700 9px var(--font-mono);letter-spacing:2px;color:#91efd3;opacity:.6}
-.priority-banner{animation:deckFloat 7s ease-in-out infinite;will-change:transform}
-.metric-card{transition:transform .38s cubic-bezier(.2,.8,.2,1),box-shadow .38s,border-color .38s;will-change:transform}
-.metric-card:hover{transform:translateY(-12px) rotateX(5deg) rotateY(-3deg) scale(1.015);border-color:rgba(133,240,210,.25)}
-.metric-top svg{filter:drop-shadow(0 0 9px rgba(113,231,201,.3))}
-.operations-grid{align-items:stretch}
-.map-panel{position:relative;overflow:hidden}
-.map-panel::after{content:"";position:absolute;left:16px;right:16px;top:68px;height:1px;background:linear-gradient(90deg,transparent,#7ee8ca99,transparent);pointer-events:none;animation:scannerLine 4.5s ease-in-out infinite}
-.map-panel .leaflet-container{transform:translateZ(24px);transition:transform .6s ease,filter .6s ease}
-.map-panel:hover .leaflet-container{transform:translateZ(35px) scale(1.008);filter:saturate(.9) contrast(1.03)}
-.feed-panel{transform:translateZ(8px)}
-.event-card{position:relative;overflow:hidden}
-.event-card::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;border-radius:2px;background:#78e4c6;transform:scaleY(0);transition:transform .25s}
-.event-card:hover::before{transform:scaleY(1)}
-.corridor-grid{perspective:1200px}
-.corridor-card:hover{transform:translateY(-9px) rotateX(4deg) rotateY(-2deg) scale(1.01)}
-.sidebar{box-shadow:18px 0 60px rgba(0,0,0,.18)}
-.mode-banner{backdrop-filter:blur(14px);background:linear-gradient(90deg,rgba(10,25,31,.95),rgba(13,38,43,.92),rgba(10,25,31,.95))}
-.badge{backdrop-filter:blur(8px)}
-@keyframes cityAura{to{transform:translate(-90px,70px) scale(1.2);opacity:.7}}
-@keyframes deckFloat{0%,100%{transform:translateY(0) rotateX(0)}50%{transform:translateY(-4px) rotateX(.5deg)}}
-@keyframes scannerLine{0%,100%{transform:translateY(0);opacity:.15}50%{transform:translateY(420px);opacity:.65}}
-@media (prefers-reduced-motion:reduce){.priority-banner,.overview::before,.map-panel::after{animation:none!important}}
-
+.overview::before {
+  content: "";
+  position: fixed;
+  width: 520px;
+  height: 520px;
+  right: -180px;
+  top: 180px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(
+    circle,
+    rgba(77, 214, 190, 0.13),
+    transparent 68%
+  );
+  filter: blur(28px);
+  animation: cityAura 10s ease-in-out infinite alternate;
+}
+.page-heading {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 22px;
+  background: linear-gradient(
+    135deg,
+    rgba(18, 36, 44, 0.74),
+    rgba(8, 20, 26, 0.45)
+  );
+  backdrop-filter: blur(16px);
+}
+.page-heading::after {
+  content: "LIVE";
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  font: 700 9px var(--font-mono);
+  letter-spacing: 2px;
+  color: #91efd3;
+  opacity: 0.6;
+}
+.priority-banner {
+  animation: deckFloat 7s ease-in-out infinite;
+  will-change: transform;
+}
+.metric-card {
+  transition:
+    transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.38s,
+    border-color 0.38s;
+  will-change: transform;
+}
+.metric-card:hover {
+  transform: translateY(-12px) rotateX(5deg) rotateY(-3deg) scale(1.015);
+  border-color: rgba(133, 240, 210, 0.25);
+}
+.metric-top svg {
+  filter: drop-shadow(0 0 9px rgba(113, 231, 201, 0.3));
+}
+.operations-grid {
+  align-items: stretch;
+}
+.map-panel {
+  position: relative;
+  overflow: hidden;
+}
+.map-panel::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 68px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #7ee8ca99, transparent);
+  pointer-events: none;
+  animation: scannerLine 4.5s ease-in-out infinite;
+}
+.map-panel .leaflet-container {
+  transform: translateZ(24px);
+  transition:
+    transform 0.6s ease,
+    filter 0.6s ease;
+}
+.map-panel:hover .leaflet-container {
+  transform: translateZ(35px) scale(1.008);
+  filter: saturate(0.9) contrast(1.03);
+}
+.feed-panel {
+  transform: translateZ(8px);
+}
+.event-card {
+  position: relative;
+  overflow: hidden;
+}
+.event-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background: #78e4c6;
+  transform: scaleY(0);
+  transition: transform 0.25s;
+}
+.event-card:hover::before {
+  transform: scaleY(1);
+}
+.corridor-grid {
+  perspective: 1200px;
+}
+.corridor-card:hover {
+  transform: translateY(-9px) rotateX(4deg) rotateY(-2deg) scale(1.01);
+}
+.sidebar {
+  box-shadow: 18px 0 60px rgba(0, 0, 0, 0.18);
+}
+.mode-banner {
+  backdrop-filter: blur(14px);
+  background: linear-gradient(
+    90deg,
+    rgba(10, 25, 31, 0.95),
+    rgba(13, 38, 43, 0.92),
+    rgba(10, 25, 31, 0.95)
+  );
+}
+.badge {
+  backdrop-filter: blur(8px);
+}
+@keyframes cityAura {
+  to {
+    transform: translate(-90px, 70px) scale(1.2);
+    opacity: 0.7;
+  }
+}
+@keyframes deckFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotateX(0);
+  }
+  50% {
+    transform: translateY(-4px) rotateX(0.5deg);
+  }
+}
+@keyframes scannerLine {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.15;
+  }
+  50% {
+    transform: translateY(420px);
+    opacity: 0.65;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .priority-banner,
+  .overview::before,
+  .map-panel::after {
+    animation: none !important;
+  }
+}
 
 /* Leaflet interaction safety: never transform the live map DOM */
 .map-panel .leaflet-container,
-.map-panel:hover .leaflet-container{
-  transform:none!important;
-  transition:filter .25s ease!important;
-  pointer-events:auto!important;
-  touch-action:none!important;
-  cursor:grab!important;
+.map-panel:hover .leaflet-container {
+  transform: none !important;
+  transition: filter 0.25s ease !important;
+  pointer-events: auto !important;
+  touch-action: none !important;
+  cursor: grab !important;
 }
-.map-panel .leaflet-container:active{cursor:grabbing!important}
-.leaflet-map-pane,.leaflet-tile-pane,.leaflet-overlay-pane,.leaflet-marker-pane{pointer-events:auto}
-.map-layer-controls{pointer-events:auto!important}
+.map-panel .leaflet-container:active {
+  cursor: grabbing !important;
+}
+.leaflet-map-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-marker-pane {
+  pointer-events: auto;
+}
+.map-layer-controls {
+  pointer-events: auto !important;
+}
 
 /* Clear first-time guidance and low-cost depth effects. */
 .quick-start {
@@ -2242,7 +2439,11 @@ body {
   gap: 12px;
   margin: 0 0 25px;
 }
-.quick-start > span { color: #85b2b2; font-size: 11px; padding-right: 8px; }
+.quick-start > span {
+  color: #85b2b2;
+  font-size: 11px;
+  padding-right: 8px;
+}
 .quick-start button {
   display: flex;
   align-items: center;
@@ -2252,18 +2453,45 @@ body {
   color: #e0eeee;
   text-align: left;
   font: inherit;
-  border: 1px solid rgba(161, 211, 213, .12);
+  border: 1px solid rgba(161, 211, 213, 0.12);
   border-radius: 12px;
   background: linear-gradient(120deg, #182c32, #14212d);
   cursor: pointer;
-  transition: transform .22s ease, border-color .22s ease, background .22s ease;
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background 0.22s ease;
 }
-.quick-start button:hover { transform: translateY(-3px); border-color: rgba(120, 215, 188, .4); }
-.quick-start button > b { padding: 8px; color: #91dfc4; font-size: 11px; border-radius: 8px; background: rgba(119, 195, 181, .07); }
-.quick-start button > div { display: grid; gap: 4px; min-width: 0; }
-.quick-start strong { color: #e8f5f3; font-size: 11px; font-weight: 500; }
-.quick-start small { color: #96adb9; font-size: 10px; }
-.quick-start svg { flex-shrink: 0; margin-left: auto; color: #7ed9be; }
+.quick-start button:hover {
+  transform: translateY(-3px);
+  border-color: rgba(120, 215, 188, 0.4);
+}
+.quick-start button > b {
+  padding: 8px;
+  color: #91dfc4;
+  font-size: 11px;
+  border-radius: 8px;
+  background: rgba(119, 195, 181, 0.07);
+}
+.quick-start button > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.quick-start strong {
+  color: #e8f5f3;
+  font-size: 11px;
+  font-weight: 500;
+}
+.quick-start small {
+  color: #96adb9;
+  font-size: 10px;
+}
+.quick-start svg {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #7ed9be;
+}
 
 .metric-card,
 .insight-tile,
@@ -2271,8 +2499,12 @@ body {
 .model-card,
 .landing-feature {
   background-image:
-    radial-gradient(ellipse at var(--glow-x, 50%) var(--glow-y, 0%), rgba(156, 221, 205, .07), transparent 68%),
-    linear-gradient(145deg, rgba(24, 43, 51, .96), rgba(12, 26, 32, .96));
+    radial-gradient(
+      ellipse at var(--glow-x, 50%) var(--glow-y, 0%),
+      rgba(156, 221, 205, 0.07),
+      transparent 68%
+    ),
+    linear-gradient(145deg, rgba(24, 43, 51, 0.96), rgba(12, 26, 32, 0.96));
 }
 @media (pointer: fine) {
   .metric-card,
@@ -2280,23 +2512,47 @@ body {
   .journey-card,
   .model-card,
   .landing-feature {
-    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
-    transition: transform .18s ease-out, border-color .22s ease, box-shadow .22s ease;
+    transform: perspective(900px) rotateX(var(--tilt-x, 0deg))
+      rotateY(var(--tilt-y, 0deg));
+    transition:
+      transform 0.18s ease-out,
+      border-color 0.22s ease,
+      box-shadow 0.22s ease;
   }
   .metric-card:hover,
   .insight-tile:hover,
   .journey-card:hover,
   .model-card:hover,
   .landing-feature:hover {
-    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-5px);
+    transform: perspective(900px) rotateX(var(--tilt-x, 0deg))
+      rotateY(var(--tilt-y, 0deg)) translateY(-5px);
   }
 }
 
-.incident-simple { padding: 20px 0; border-bottom: 1px solid rgba(170, 203, 221, .1); }
-.incident-simple h3 { margin: 14px 0; font-size: 16px; text-transform: capitalize; }
-.incident-simple p { color: #b0c4cd; font-size: 13px; line-height: 1.7; }
-.incident-simple small { display: block; margin: 12px 0; color: #83a5b5; }
-.incident-simple > div:last-child { display: flex; flex-wrap: wrap; gap: 10px; }
+.incident-simple {
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(170, 203, 221, 0.1);
+}
+.incident-simple h3 {
+  margin: 14px 0;
+  font-size: 16px;
+  text-transform: capitalize;
+}
+.incident-simple p {
+  color: #b0c4cd;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.incident-simple small {
+  display: block;
+  margin: 12px 0;
+  color: #83a5b5;
+}
+.incident-simple > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 .plate-record,
 .safety-report {
   width: 100%;
@@ -2304,45 +2560,140 @@ body {
   padding: 20px;
   color: #bdced4;
   text-align: left;
-  border: 1px solid rgba(186, 220, 213, .15);
+  border: 1px solid rgba(186, 220, 213, 0.15);
   border-radius: 14px;
   background: linear-gradient(135deg, #20363c, #172635);
   cursor: pointer;
-  transition: transform .22s ease, border-color .22s ease;
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease;
 }
 .plate-record:hover,
-.safety-report:hover { transform: translateY(-3px); border-color: rgba(143, 230, 203, .35); }
-.plate-record { display: grid; gap: 16px; }
-.number-plate { display: flex; align-items: center; gap: 14px; width: fit-content; padding: 11px 15px; color: #16343b; font: 500 22px monospace; border: 3px solid #b7c8ca; border-radius: 7px; background: #e9ede6; box-shadow: 0 8px 20px rgba(0, 0, 0, .25); }
-.number-plate small { color: #46719c; font: 9px sans-serif; }
+.safety-report:hover {
+  transform: translateY(-3px);
+  border-color: rgba(143, 230, 203, 0.35);
+}
+.plate-record {
+  display: grid;
+  gap: 16px;
+}
+.number-plate {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: fit-content;
+  padding: 11px 15px;
+  color: #16343b;
+  font: 500 22px monospace;
+  border: 3px solid #b7c8ca;
+  border-radius: 7px;
+  background: #e9ede6;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+.number-plate small {
+  color: #46719c;
+  font: 9px sans-serif;
+}
 .plate-record > span:last-child,
-.safety-report p { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: #9cb8c4; font-size: 11px; }
-.safety-report > div { display: flex; justify-content: space-between; color: #a3bbc7; font-size: 11px; }
-.safety-report h3 { margin: 16px 0; font-size: 15px; line-height: 1.7; }
-.safety-report footer { display: flex; justify-content: space-between; margin-top: 18px; color: #98e8d1; font-size: 12px; }
-.safety-step { display: flex; gap: 18px; padding: 22px 0; }
-.safety-step > svg { flex-shrink: 0; margin-top: 5px; color: #8fe6cb; }
-.safety-step small { color: #85b3b2; font-size: 9px; letter-spacing: 1px; }
-.safety-step h3 { margin: 7px 0; font-size: 14px; }
-.safety-step p { color: #a6bdc7; font-size: 12px; line-height: 1.7; }
+.safety-report p {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: #9cb8c4;
+  font-size: 11px;
+}
+.safety-report > div {
+  display: flex;
+  justify-content: space-between;
+  color: #a3bbc7;
+  font-size: 11px;
+}
+.safety-report h3 {
+  margin: 16px 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.safety-report footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 18px;
+  color: #98e8d1;
+  font-size: 12px;
+}
+.safety-step {
+  display: flex;
+  gap: 18px;
+  padding: 22px 0;
+}
+.safety-step > svg {
+  flex-shrink: 0;
+  margin-top: 5px;
+  color: #8fe6cb;
+}
+.safety-step small {
+  color: #85b3b2;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.safety-step h3 {
+  margin: 7px 0;
+  font-size: 14px;
+}
+.safety-step p {
+  color: #a6bdc7;
+  font-size: 12px;
+  line-height: 1.7;
+}
 
 /* Continuous decoration is disabled in the dashboard to protect map FPS. */
 .workspace-layout::before,
 .priority-banner,
-.map-panel::after { animation: none; }
-.metric-card { will-change: auto; }
+.map-panel::after {
+  animation: none;
+}
+.metric-card {
+  will-change: auto;
+}
 
 @media (max-width: 1100px) {
-  .quick-start { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .quick-start > span { grid-column: 1 / -1; }
-  .quick-start button > svg { display: none; }
+  .quick-start {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .quick-start > span {
+    grid-column: 1 / -1;
+  }
+  .quick-start button > svg {
+    display: none;
+  }
 }
 @media (max-width: 720px) {
-  .quick-start { grid-template-columns: 1fr; }
-  .quick-start button > svg { display: block; }
+  .quick-start {
+    grid-template-columns: 1fr;
+  }
+  .quick-start button > svg {
+    display: block;
+  }
 }
 html[data-motion="off"] .metric-card,
 html[data-motion="off"] .insight-tile,
 html[data-motion="off"] .journey-card,
 html[data-motion="off"] .model-card,
-html[data-motion="off"] .landing-feature { transform: none !important; }
+html[data-motion="off"] .landing-feature {
+  transform: none !important;
+}
+
+/* Automatic lighter mode for touch and lower-power devices. */
+html[data-fx="balanced"] .overview::before {
+  display: none;
+}
+html[data-fx="balanced"] .workspace-header,
+html[data-fx="balanced"] .workspace-sidebar,
+html[data-fx="balanced"] .panel,
+html[data-fx="balanced"] .panel-elevated,
+html[data-fx="balanced"] .page-heading,
+html[data-fx="balanced"] .mode-banner,
+html[data-fx="balanced"] .badge {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
