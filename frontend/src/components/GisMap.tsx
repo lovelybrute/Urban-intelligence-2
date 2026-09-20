@@ -38,11 +38,14 @@ export const GisMap: React.FC<GisMapProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const routesLayerRef = useRef<L.LayerGroup | null>(null);
+  const baseLayerRef = useRef<L.TileLayer | null>(null);
+  const labelsLayerRef = useRef<L.TileLayer | null>(null);
 
   const [showHeatmap, setShowHeatmap] = useState(initialHeatmap);
   const [showRoads, setShowRoads] = useState(false);
   const [tileError, setTileError] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
+  const [mapStyle, setMapStyle] = useState<"street" | "satellite" | "topo">("street");
 
   // Layer filter toggles
   const [showBuses, setShowBuses] = useState(true);
@@ -63,19 +66,18 @@ export const GisMap: React.FC<GisMapProps> = ({
       zoomControl: false,
     });
 
-    // Custom dark sleek map tiles (CartoDB Dark Matter)
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    // Default street map. No API key required for the prototype.
+    const street = L.tileLayer(
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
-        attribution:
-          '&copy; <a href="https://carto.com/">CartoDB</a> &copy; OpenStreetMap contributors',
+        attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
-        subdomains: "abcd",
       },
     )
       .on("tileerror", () => setTileError(true))
       .on("tileload", () => setTileError(false))
       .addTo(map);
+    baseLayerRef.current = street;
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
@@ -91,6 +93,65 @@ export const GisMap: React.FC<GisMapProps> = ({
       mapInstanceRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    baseLayerRef.current?.remove();
+    labelsLayerRef.current?.remove();
+    labelsLayerRef.current = null;
+    setTileError(false);
+
+    const common = {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors',
+    };
+
+    let base: L.TileLayer;
+    if (mapStyle === "satellite") {
+      base = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 19,
+          attribution: "Tiles &copy; Esri",
+        },
+      );
+      const labels = L.tileLayer(
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 19,
+          attribution: "Labels &copy; Esri",
+          pane: "overlayPane",
+        },
+      );
+      labels.on("tileerror", () => setTileError(true));
+      labels.addTo(map);
+      labelsLayerRef.current = labels;
+    } else if (mapStyle === "topo") {
+      base = L.tileLayer(
+        "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        {
+          maxZoom: 17,
+          attribution: "Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap",
+        },
+      );
+    } else {
+      base = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", common);
+    }
+
+    base
+      .on("tileerror", () => setTileError(true))
+      .on("tileload", () => setTileError(false))
+      .addTo(map);
+    baseLayerRef.current = base;
+
+    return () => {
+      base.remove();
+      labelsLayerRef.current?.remove();
+      labelsLayerRef.current = null;
+    };
+  }, [mapStyle]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -428,6 +489,27 @@ export const GisMap: React.FC<GisMapProps> = ({
         </button>
         {layersOpen && (
           <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 4 }}>
+              {([["street", "Map"], ["satellite", "Satellite"], ["topo", "Terrain"]] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setMapStyle(id)}
+                  aria-pressed={mapStyle === id}
+                  style={{
+                    padding: "7px 8px",
+                    borderRadius: 8,
+                    border: mapStyle === id ? "1px solid var(--accent)" : "1px solid var(--border-default)",
+                    background: mapStyle === id ? "var(--accent-muted)" : "var(--bg-elevated)",
+                    color: "var(--text-primary)",
+                    fontSize: "0.7rem",
+                    fontWeight: 650,
+                    cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <label>
               <input
                 type="checkbox"
