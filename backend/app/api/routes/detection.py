@@ -1,5 +1,6 @@
 import os
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from app.services.road_detector import detect_road_defects
@@ -7,9 +8,16 @@ from app.services.vision_detector import detect_scene, model_health
 from app.services.video_analytics import analyse_video
 from app.services.anpr_detector import recognize_plate
 from app.services.infrastructure_detector import detect_infrastructure
+from app.services.infrastructure_expectations import assess_missing_assets
 
 router = APIRouter(prefix="/api/detect", tags=["AI Detection"])
 MAX_FILE_SIZE = 5 * 1024 * 1024
+
+class MissingInfrastructureRequest(BaseModel):
+    expected_assets: list[str]
+    observed_classes: list[str]
+    repeated_observations: int = 1
+    min_observations: int = 2
 
 async def _read_image(file: UploadFile) -> bytes:
     raw = await file.read(MAX_FILE_SIZE + 1)
@@ -90,3 +98,15 @@ async def detect_road_infrastructure(file: UploadFile = File(...), confidence: f
         raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.post("/infrastructure/missing")
+def detect_missing_infrastructure(payload: MissingInfrastructureRequest):
+    if payload.repeated_observations < 1 or payload.min_observations < 1:
+        raise HTTPException(status_code=400, detail="Observation counts must be positive")
+    return assess_missing_assets(
+        payload.expected_assets,
+        payload.observed_classes,
+        payload.repeated_observations,
+        payload.min_observations,
+    )
