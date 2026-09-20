@@ -4,6 +4,7 @@ from app.services.road_detector import detect_road_defects
 from app.services.vision_detector import detect_scene, model_health
 from app.services.video_analytics import analyse_video
 from app.services.anpr_detector import recognize_plate
+from app.services.infrastructure_detector import detect_infrastructure
 
 router = APIRouter(prefix="/api/detect", tags=["AI Detection"])
 MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -67,6 +68,17 @@ async def detect_number_plate(file: UploadFile = File(...), confidence: float = 
     raw = await _read_image(file)
     try:
         return recognize_plate(raw, confidence=confidence)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.post("/infrastructure")
+async def detect_road_infrastructure(file: UploadFile = File(...), confidence: float = 0.25):
+    raw = await _read_image(file)
+    try:
+        return detect_infrastructure(raw, confidence=confidence)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
