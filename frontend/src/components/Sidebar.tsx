@@ -37,23 +37,23 @@ const groups = [
     ],
   },
   {
-    label: "CITY INTELLIGENCE",
+    label: "CITY STATUS",
     items: [
-      { id: "roads", label: "Road quality", icon: AlertOctagon },
-      { id: "traffic", label: "Traffic & flow", icon: Car },
-      { id: "safety", label: "Pedestrian safety", icon: Users },
-      { id: "incidents", label: "Incidents & ANPR", icon: Camera },
-      { id: "alerts", label: "Alerts center", icon: Bell },
+      { id: "roads", label: "Road conditions", icon: AlertOctagon },
+      { id: "traffic", label: "Traffic", icon: Car },
+      { id: "safety", label: "People safety", icon: Users },
+      { id: "incidents", label: "Incidents & plates", icon: Camera },
+      { id: "alerts", label: "Alerts", icon: Bell },
     ],
   },
   {
-    label: "PLANNING & INSIGHTS",
+    label: "TOOLS & REPORTS",
     items: [
       { id: "routes", label: "Route delays", icon: Route },
-      { id: "od-analytics", label: "OD analytics", icon: Network },
+      { id: "od-analytics", label: "Travel patterns", icon: Network },
       { id: "infrastructure", label: "Infrastructure", icon: Construction },
       { id: "reports", label: "Incident reports", icon: FileText },
-      { id: "mlops", label: "Model health", icon: Cpu },
+      { id: "mlops", label: "AI model status", icon: Cpu },
     ],
   },
 ];
