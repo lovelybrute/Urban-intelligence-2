@@ -40,7 +40,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       >
         <div>
           <h2 className="heading-md" style={{ marginBottom: "4px" }}>
-            Incident & Defect Reports
+            Road & safety reports
           </h2>
           <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>
             Prototype reports generated from supplied observations. Review
@@ -54,7 +54,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           style={{ fontSize: "0.8125rem", gap: "6px" }}
         >
           <Printer size={15} />
-          <span>Print / Export PDF Dossier</span>
+          <span>Print or save PDF</span>
         </button>
       </div>
 
@@ -193,7 +193,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   letterSpacing: "-0.02em",
                 }}
               >
-                Mobile Urban Sensing Incident Dossier
+                Road & safety report
               </h1>
               <div
                 style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}
@@ -281,7 +281,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   marginBottom: "4px",
                 }}
               >
-                GEOSPATIAL COORDINATES
+                MAP LOCATION
               </div>
               <div
                 className="mono"
@@ -320,7 +320,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   marginBottom: "4px",
                 }}
               >
-                OBSERVING SENSING UNIT
+                BUS AND CAMERA
               </div>
               <div
                 style={{
@@ -339,7 +339,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   marginTop: "4px",
                 }}
               >
-                Edge Confidence:{" "}
+                AI score:{" "}
                 {Math.round((selectedEvent.confidence ?? 0) * 100)}%
               </div>
             </div>
@@ -359,7 +359,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   marginBottom: "4px",
                 }}
               >
-                ANPR IDENTIFICATION
+                VEHICLE NUMBER PLATE
               </div>
               <div
                 className="mono"
@@ -380,13 +380,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 }}
               >
                 {hasPlate
-                  ? "OCR transcription; human verification required"
-                  : "Telemetry incident without plate trigger"}
+                  ? "Read by AI; please check the number"
+                  : "No number plate was supplied"}
               </div>
             </div>
           </div>
 
-          {/* AI Explainability Statement */}
+          {/* AI How AI reached this result Statement */}
           <div
             style={{
               background: "var(--accent-muted)",
@@ -439,7 +439,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               lineHeight: 1.5,
             }}
           >
-            <b style={{ color: "var(--text-primary)" }}>Narrative Summary: </b>
+            <b style={{ color: "var(--text-primary)" }}>What happened: </b>
             {selectedEvent.description}
           </div>
 

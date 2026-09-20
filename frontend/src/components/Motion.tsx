@@ -27,6 +27,26 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.motion = enabled ? "on" : "off";
   }, [enabled]);
+  useEffect(() => {
+    if (!enabled || window.matchMedia?.("(pointer: coarse)").matches) return;
+    let current: HTMLElement | null = null;
+    let frame = 0;
+    const clear = () => { if(current){ current.style.removeProperty("--tilt-x"); current.style.removeProperty("--tilt-y"); current.style.removeProperty("--glow-x"); current.style.removeProperty("--glow-y"); } current=null; };
+    const move = (event: PointerEvent) => {
+      const card = (event.target as HTMLElement)?.closest<HTMLElement>(".metric-card, .insight-tile, .journey-card, .model-card, .landing-feature");
+      if(card !== current) { cancelAnimationFrame(frame); clear(); current=card; }
+      if(!card) return;
+      const bounds=card.getBoundingClientRect();
+      const x=(event.clientX-bounds.left)/bounds.width;
+      const y=(event.clientY-bounds.top)/bounds.height;
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(()=>{card.style.setProperty("--tilt-x",`${(0.5-y)*7}deg`);card.style.setProperty("--tilt-y",`${(x-0.5)*7}deg`);card.style.setProperty("--glow-x",`${x*100}%`);card.style.setProperty("--glow-y",`${y*100}%`);});
+    };
+    document.addEventListener("pointermove",move,{passive:true});
+    document.addEventListener("pointerleave",clear);
+    window.addEventListener("blur",clear);
+    return ()=>{cancelAnimationFrame(frame);clear();document.removeEventListener("pointermove",move);document.removeEventListener("pointerleave",clear);window.removeEventListener("blur",clear);};
+  }, [enabled]);
   const toggle = () =>
     setPaused((value) => {
       localStorage.setItem("urban-motion", value ? "on" : "paused");

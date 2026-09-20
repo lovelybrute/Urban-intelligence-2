@@ -43,9 +43,9 @@ export const Header: React.FC<HeaderProps> = ({
     setStatus("");
     try {
       await onTriggerDemo(idx);
-      setStatus("Scenario completed");
+      setStatus("Example added to the dashboard");
     } catch {
-      setStatus("Scenario failed. Please retry.");
+      setStatus("Could not add the example. Try again.");
     } finally {
       setBusy(false);
     }
@@ -70,12 +70,12 @@ export const Header: React.FC<HeaderProps> = ({
             <Layers size={21} />
           </span>
           <span>
-            Urban Intelligence<small>SIH 26124 · COMMAND PLATFORM</small>
+            Urban Intelligence<small>SIH 26124 · CITY DASHBOARD</small>
           </span>
         </button>
       </div>
       <span className="header-city">
-        <MapPin size={15} /> Hyderabad <span>/</span> Central operations
+        <MapPin size={15} /> Hyderabad <span>/</span> City dashboard
       </span>
       <div className="header-actions">
         <MotionToggle />
@@ -96,21 +96,21 @@ export const Header: React.FC<HeaderProps> = ({
             aria-controls="scenario-list"
           >
             <Play size={14} />
-            {busy ? "Running…" : "Run scenario"}
+            {busy ? "Running…" : "Try a demo"}
             <ChevronDown size={14} />
           </button>
           {open && (
             <div className="scenario-menu panel-elevated" id="scenario-list">
               <div className="eyebrow">
-                {DEMO_MODE ? "SIMULATED SCENARIOS" : "BACKEND SCENARIOS"}
+                {DEMO_MODE ? "TRY AN EXAMPLE" : "TRY AN EXAMPLE"}
               </div>
               {[
                 "Road pothole detection",
-                "Multi-bus deduplication",
-                "Traffic congestion",
-                "Severe waterlogging",
-                "Pedestrian safety risk",
-                "Hit-and-run / ANPR",
+                "Same problem, two buses",
+                "Busy traffic",
+                "Flooded road",
+                "People & safety risk",
+                "Vehicle number plate",
               ].map((label, idx) => (
                 <button key={label} onClick={() => run(idx)}>
                   <span>0{idx + 1}</span>

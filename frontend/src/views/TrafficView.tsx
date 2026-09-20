@@ -47,11 +47,11 @@ export const TrafficView = ({
     <div className="analytics-page">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">CITY INTELLIGENCE / MOBILITY</div>
+          <div className="eyebrow">ROADS & SAFETY / MOBILITY</div>
           <h1>
-            Traffic, in perspective<span>.</span>
+            See where traffic builds up<span>.</span>
           </h1>
-          <p>Vehicle observations and spatial congestion patterns.</p>
+          <p>See recorded vehicle counts and places with busy traffic.</p>
         </div>
         <span className="badge badge-accent">
           {DEMO_MODE ? "Sample observations" : "Last 24 hours"}
@@ -61,34 +61,34 @@ export const TrafficView = ({
       <div className="summary-grid">
         <article className="insight-tile">
           <Car />
-          <span>Vehicle sightings</span>
+          <span>Vehicles seen</span>
           <strong>{stats?.total_vehicles_counted ?? "—"}</strong>
-          <small>Across observations; not unique vehicles</small>
+          <small>The same vehicle may be counted more than once</small>
         </article>
         <article className="insight-tile">
           <Layers />
-          <span>Traffic observations</span>
+          <span>Traffic reports</span>
           <strong>{stats?.total_observations ?? "—"}</strong>
-          <small>Repeated camera samples included</small>
+          <small>From recorded camera checks</small>
         </article>
         <article className="insight-tile">
           <Gauge />
-          <span>Reported average speed</span>
+          <span>Average speed</span>
           <strong>
             {stats?.average_speed_kmh != null
               ? `${stats.average_speed_kmh} km/h`
               : "—"}
           </strong>
-          <small>Unavailable without speed measurements</small>
+          <small>Shown when speed data is available</small>
         </article>
       </div>
       <section className="panel analytics-map">
         <div className="section-heading">
           <div>
-            <h2>Congestion intensity</h2>
-            <span>Intensity represents recorded congestion severity</span>
+            <h2>Where traffic is busy</h2>
+            <span>Stronger colors mean heavier reported traffic</span>
           </div>
-          <span className="badge badge-high">Spatial observations</span>
+          <span className="badge badge-high">Reports on the map</span>
         </div>
         <GisMap
           buses={buses}
@@ -102,7 +102,7 @@ export const TrafficView = ({
       <div className="analytics-columns">
         <section className="panel analytics-section">
           <div className="section-heading">
-            <h2>Vehicle composition</h2>
+            <h2>Types of vehicles</h2>
             <Car size={19} />
           </div>
           {Object.entries(stats?.vehicle_composition || {}).map(
@@ -134,7 +134,7 @@ export const TrafficView = ({
         </section>
         <section className="panel analytics-section">
           <div className="section-heading">
-            <h2>Latest congestion observations</h2>
+            <h2>Recent traffic reports</h2>
             <ArrowUpRight size={18} />
           </div>
           {congestion.slice(0, 5).map((e) => (
@@ -144,13 +144,13 @@ export const TrafficView = ({
               <small>
                 Bus {e.bus_id} · {e.latitude.toFixed(4)},{" "}
                 {e.longitude.toFixed(4)}
-                {e.is_simulated ? " · Simulated" : ""}
+                {e.is_simulated ? " · Demo data" : ""}
               </small>
             </article>
           ))}
           {!congestion.length && (
             <p className="empty-copy">
-              No congestion events in the current feed.
+              No traffic reports to show yet.
             </p>
           )}
         </section>

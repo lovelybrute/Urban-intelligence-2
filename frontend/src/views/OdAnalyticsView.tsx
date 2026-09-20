@@ -35,13 +35,12 @@ export const OdAnalyticsView = ({ routes }: { routes: Route[] }) => {
     <div className="analytics-page">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">PLANNING / CORRIDOR MOVEMENT</div>
+          <div className="eyebrow">UNDERSTAND YOUR BUS JOURNEYS</div>
           <h1>
-            Where journeys connect<span>.</span>
+            Where buses go<span>.</span>
           </h1>
           <p>
-            Bus corridor origin–destination observations from GPS endpoint
-            crossings.
+            See where bus trips start, where they finish, and how long they take.
           </p>
         </div>
         <RouteIcon size={28} />
@@ -66,10 +65,10 @@ export const OdAnalyticsView = ({ routes }: { routes: Route[] }) => {
             </div>
             <footer>
               <div>
-                <small>Observed average</small>
+                <small>Average trip time</small>
                 <strong>
                   {r.average_minutes === null
-                    ? "Awaiting GPS trips"
+                    ? "Waiting for trips"
                     : `${r.average_minutes} min`}
                 </strong>
               </div>
@@ -87,7 +86,7 @@ export const OdAnalyticsView = ({ routes }: { routes: Route[] }) => {
         ))}
       </div>
       {!data.length && !remote.loading && (
-        <p className="empty-copy">No active corridors are available.</p>
+        <p className="empty-copy">No bus routes are available yet.</p>
       )}
     </div>
   );

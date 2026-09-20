@@ -20,9 +20,9 @@ export const RoutesView = ({ routes }: { routes: Route[] }) => {
     <div className="analytics-page">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">PLANNING / SERVICE PERFORMANCE</div>
+          <div className="eyebrow">CHECK YOUR BUS ROUTES</div>
           <h1>
-            Every route, accounted for<span>.</span>
+            Are buses arriving on time?<span>.</span>
           </h1>
           <p>
             Compare scheduled duration with completed bus journeys from the last
@@ -35,9 +35,9 @@ export const RoutesView = ({ routes }: { routes: Route[] }) => {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Corridor</th>
+              <th>Bus route</th>
               <th>Scheduled</th>
-              <th>Observed average</th>
+              <th>Average trip time</th>
               <th>Difference</th>
               <th>Journeys</th>
             </tr>
@@ -52,7 +52,7 @@ export const RoutesView = ({ routes }: { routes: Route[] }) => {
                 <td>{r.expected_minutes} min</td>
                 <td>
                   {r.average_minutes === null
-                    ? "Awaiting GPS"
+                    ? "Waiting for trip data"
                     : `${r.average_minutes} min`}
                 </td>
                 <td>
@@ -74,9 +74,7 @@ export const RoutesView = ({ routes }: { routes: Route[] }) => {
         </table>
       </div>
       <p className="empty-copy">
-        No estimated delay is invented when a complete GPS journey is
-        unavailable. Negative differences mean arrival earlier than the
-        scheduled duration.
+        Trip times appear after a complete journey is recorded. A minus sign means the trip took less time than planned.
       </p>
     </div>
   );

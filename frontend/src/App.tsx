@@ -180,7 +180,7 @@ export const App: React.FC = () => {
       setLoadError("");
     } catch {
       setLoadError(
-        "Unable to load backend telemetry data. Check connection and click retry.",
+        "Could not load your city data. Check the connection and try again.",
       );
     } finally {
       setLoading(false);
@@ -306,7 +306,7 @@ export const App: React.FC = () => {
                 observation_count: (evt.observation_count || 1) + 1,
                 ai_reasoning: [
                   ...(evt.ai_reasoning || []),
-                  "Corroborating sighting: Re-identified by Bus TS09-3207. Confidence reinforced to 96%.",
+                  "Corroborating sighting: Re-identified by Bus TS09-3207. AI score reinforced to 96%.",
                 ],
               }
             : evt,
@@ -351,16 +351,16 @@ export const App: React.FC = () => {
       <div className="mode-banner">
         <span>
           {DEMO_MODE
-            ? "SIMULATION MODE · Sample Hyderabad telemetry. No live emergency dispatch."
+            ? "DEMO · Explore sample city reports. No real emergency calls are made."
             : loadError
-              ? "BACKEND UNAVAILABLE · Connection needs attention."
+              ? "NOT CONNECTED · Please check your server."
               : loading
-                ? "BACKEND MODE · Loading telemetry…"
-                : "BACKEND MODE · Latest retrieved telemetry."}
+                ? "CONNECTED MODE · Loading city reports…"
+                : "CONNECTED MODE · Showing the latest received reports."}
         </span>
         <div className="mode-actions">
           <button onClick={switchMode}>
-            {DEMO_MODE ? "Connect backend" : "Switch to demo"}
+            {DEMO_MODE ? "Use connected data" : "Explore the demo"}
           </button>
           {!DEMO_MODE && <button onClick={logout}>Sign out</button>}
         </div>
@@ -430,7 +430,7 @@ export const App: React.FC = () => {
               <span>
                 {lastUpdated
                   ? `Last retrieved ${lastUpdated} IST · Refreshes every 15 s`
-                  : "Awaiting telemetry"}
+                  : "Waiting for updates"}
               </span>
               <button className="btn btn-ghost" onClick={() => loadData(true)}>
                 <RefreshCw size={14} /> Refresh
@@ -457,7 +457,7 @@ export const App: React.FC = () => {
                 }}
               />
               <div style={{ fontSize: "0.875rem" }}>
-                Synchronizing edge telemetry stream...
+                Loading your city dashboard…
               </div>
             </div>
           )}

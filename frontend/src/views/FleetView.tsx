@@ -12,14 +12,14 @@ export const FleetView: React.FC<FleetViewProps> = ({ buses }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2 className="heading-md" style={{ marginBottom: '4px' }}>Public Transit Sensing Fleet</h2>
+          <h2 className="heading-md" style={{ marginBottom: '4px' }}>Meet your buses</h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Real-time telemetry, camera operational status, and edge compute performance across active transit units.
+            Check each bus, its route, cameras, and latest updates.
           </p>
         </div>
         <span className="badge badge-low" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <CheckCircle size={13} />
-          <span>{buses.length} Buses Active Sensing</span>
+          <span>{buses.length} buses in this view</span>
         </span>
       </div>
 
@@ -29,13 +29,13 @@ export const FleetView: React.FC<FleetViewProps> = ({ buses }) => {
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Vehicle</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Assigned Corridor</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Bus route</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Speed</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Edge Inference</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Video speed</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cameras</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Network Latency</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Passenger Load</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Telemetry Status</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Connection delay</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Seats filled</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Bus status</th>
               </tr>
             </thead>
             <tbody>
@@ -69,7 +69,7 @@ export const FleetView: React.FC<FleetViewProps> = ({ buses }) => {
                   </td>
 
                   <td style={{ padding: '14px 16px' }}>
-                    <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{bus.route_name || 'Corridor Route'}</div>
+                    <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{bus.route_name || 'Route not provided'}</div>
                     <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
                       GPS {bus.current_latitude.toFixed(4)}, {bus.current_longitude.toFixed(4)}
                     </div>
@@ -84,7 +84,7 @@ export const FleetView: React.FC<FleetViewProps> = ({ buses }) => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Cpu size={14} color="#22c55e" />
                       <span className="mono" style={{ fontWeight: 600, color: '#22c55e' }}>
-                        {bus.edge_fps || 22.0} FPS
+                        {bus.edge_fps ?? "—"} FPS
                       </span>
                     </div>
                   </td>
@@ -92,28 +92,28 @@ export const FleetView: React.FC<FleetViewProps> = ({ buses }) => {
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-text)', fontWeight: 500 }}>
                       <Camera size={14} />
-                      <span>{bus.active_cameras || 4} HD Cams</span>
+                      <span>{bus.active_cameras ?? "—"} cameras</span>
                     </div>
                   </td>
 
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Wifi size={14} color="var(--text-secondary)" />
-                      <span className="mono">{bus.network_latency_ms || 24} ms</span>
+                      <span className="mono">{bus.network_latency_ms ?? "—"} ms</span>
                     </div>
                   </td>
 
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ width: '80px', background: 'rgba(255, 255, 255, 0.08)', height: '5px', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
-                      <div style={{ width: `${bus.passenger_load_pct || 60}%`, height: '100%', background: 'var(--accent)' }} />
+                      <div style={{ width: `${bus.passenger_load_pct ?? 0}%`, height: '100%', background: 'var(--accent)' }} />
                     </div>
                     <span className="mono" style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>
-                      {bus.passenger_load_pct || 60}% Occupancy
+                      {bus.passenger_load_pct != null ? `${bus.passenger_load_pct}%` : "Not reported"}
                     </span>
                   </td>
 
                   <td style={{ padding: '14px 16px' }}>
-                    <span className="badge badge-low">Active Ingestion</span>
+                    <span className="badge badge-low">{bus.status}</span>
                   </td>
                 </tr>
               ))}
@@ -122,7 +122,7 @@ export const FleetView: React.FC<FleetViewProps> = ({ buses }) => {
         </div>
 
         <div style={{ padding: '12px 16px', background: 'rgba(255, 255, 255, 0.01)', borderTop: '1px solid var(--border-subtle)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-          * Edge Hardware Specification: Onboard Jetson/Orin compute units running TensorRT-optimized YOLOv8s models with 5G cellular uplink for event telemetry.
+          Video speed shows how many frames the device checks each second. A dash means the bus has not supplied that value.
         </div>
       </div>
     </div>

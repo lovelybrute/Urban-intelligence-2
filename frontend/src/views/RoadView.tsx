@@ -32,7 +32,7 @@ export const RoadView: React.FC<RoadViewProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div>
-        <h2 className="heading-md" style={{ marginBottom: '4px' }}>Road Infrastructure & Condition Intelligence</h2>
+        <h2 className="heading-md" style={{ marginBottom: '4px' }}>Road Signs & crossings & Condition Intelligence</h2>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
           Continuous road surface assessment, structural crack detection, and prioritized municipal repair dispatch.
         </p>
@@ -88,7 +88,7 @@ export const RoadView: React.FC<RoadViewProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertOctagon size={16} color="var(--accent-text)" />
-              <span>Detected Defects (Spatially Deduplicated)</span>
+              <span>Road problems grouped by location</span>
             </h3>
             <span className="badge badge-neutral" style={{ fontSize: '0.6875rem' }}>{defectEvents.length} Active</span>
           </div>
@@ -130,7 +130,7 @@ export const RoadView: React.FC<RoadViewProps> = ({
                   <div className="mono" style={{ fontWeight: 700, color: 'var(--accent-text)', fontSize: '1.125rem' }}>
                     {Math.round(evt.confidence * 100)}%
                   </div>
-                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Confidence</div>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>AI score</div>
                 </div>
               </div>
             ))}

@@ -219,7 +219,7 @@ export const EventModal: React.FC<EventModalProps> = ({
         >
           <div>
             <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-              AI Confidence
+              AI AI score
             </div>
             <div
               className="mono"
@@ -308,7 +308,7 @@ export const EventModal: React.FC<EventModalProps> = ({
             }}
           >
             <Sparkles size={16} />
-            <span>AI Reasoning & Explainability Audit</span>
+            <span>AI Reasoning & How AI reached this result Audit</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             {event.ai_reasoning && event.ai_reasoning.length > 0 ? (

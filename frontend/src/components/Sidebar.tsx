@@ -29,31 +29,31 @@ interface SidebarProps {
 }
 const groups = [
   {
-    label: "WORKSPACE",
+    label: "START HERE",
     items: [
       { id: "overview", label: "Overview", icon: LayoutDashboard },
       { id: "live-map", label: "City map", icon: Map },
-      { id: "fleet", label: "Bus fleet", icon: Bus },
+      { id: "fleet", label: "Your buses", icon: Bus },
     ],
   },
   {
-    label: "CITY STATUS",
+    label: "ROADS & SAFETY",
     items: [
       { id: "roads", label: "Road conditions", icon: AlertOctagon },
       { id: "traffic", label: "Traffic", icon: Car },
-      { id: "safety", label: "People safety", icon: Users },
-      { id: "incidents", label: "Incidents & plates", icon: Camera },
+      { id: "safety", label: "People & safety", icon: Users },
+      { id: "incidents", label: "Vehicles & incidents", icon: Camera },
       { id: "alerts", label: "Alerts", icon: Bell },
     ],
   },
   {
-    label: "TOOLS & REPORTS",
+    label: "PLAN & REVIEW",
     items: [
       { id: "routes", label: "Route delays", icon: Route },
-      { id: "od-analytics", label: "Travel patterns", icon: Network },
-      { id: "infrastructure", label: "Infrastructure", icon: Construction },
+      { id: "od-analytics", label: "Bus journeys", icon: Network },
+      { id: "infrastructure", label: "Signs & crossings", icon: Construction },
       { id: "reports", label: "Incident reports", icon: FileText },
-      { id: "mlops", label: "AI model status", icon: Cpu },
+      { id: "mlops", label: "AI & devices", icon: Cpu },
     ],
   },
 ];
@@ -130,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       <aside className={`workspace-sidebar ${collapsed ? "is-collapsed" : ""}`}>
         <div className="sidebar-top">
-          {!collapsed && <span>OPERATIONS</span>}
+          {!collapsed && <span>YOUR DASHBOARD</span>}
           <button
             className="btn btn-ghost"
             onClick={onToggleCollapse}
@@ -144,8 +144,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="sidebar-footer">
             <Bus size={18} />
             <div>
-              <strong>{busesCount} fleet records</strong>
-              <span>Mobile urban sensing</span>
+              <strong>{busesCount} buses in view</strong>
+              <span>Seeing streets through bus cameras</span>
             </div>
           </div>
         )}

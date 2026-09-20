@@ -14,15 +14,15 @@ export const MlOpsView = ({ buses }: { buses: Bus[] }) => {
   const remote = useRemoteData<Model[]>("/system/models");
   const models = DEMO_MODE
     ? [
-        "Road defect detector",
-        "Traffic / person detector",
-        "Plate detector",
+        "Road problem detection",
+        "Vehicle and person detection",
+        "Number plate detection",
       ].map((name) => ({
         name,
         artifact_present: false,
-        status: "Not verified in demo mode",
+        status: "Not checked in this demo",
         validation: null,
-        scope: "Connect to the backend to inspect configured artifacts.",
+        scope: "Connect your server to check its AI files.",
       }))
     : remote.data || [];
   const reporting = buses.filter((b) => b.edge_fps !== undefined);
@@ -35,13 +35,12 @@ export const MlOpsView = ({ buses }: { buses: Bus[] }) => {
     <div className="analytics-page">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">SYSTEM / MODEL READINESS</div>
+          <div className="eyebrow">CHECK YOUR AI & DEVICES</div>
           <h1>
-            Evidence before confidence<span>.</span>
+            See what is ready<span>.</span>
           </h1>
           <p>
-            Model availability and telemetry, with unverified results clearly
-            marked.
+            Check your devices and see which AI tools still need testing.
           </p>
         </div>
         <Cpu size={30} />
@@ -50,27 +49,27 @@ export const MlOpsView = ({ buses }: { buses: Bus[] }) => {
       <div className="summary-grid">
         <article className="insight-tile">
           <Video />
-          <span>Reporting devices</span>
+          <span>Devices sending updates</span>
           <strong>{reporting.length}</strong>
           <small>
-            {DEMO_MODE ? "Simulated telemetry" : "Devices with reported FPS"}
+            {DEMO_MODE ? "Example device updates" : "Devices reporting their video speed"}
           </small>
         </article>
         <article className="insight-tile">
           <Cpu />
-          <span>Mean processing rate</span>
+          <span>Video processing speed</span>
           <strong>{fps ? `${fps} FPS` : "—"}</strong>
           <small>
             {DEMO_MODE
-              ? "Simulated; not a benchmark"
+              ? "Demo data; not a benchmark"
               : "Unavailable until edge measurements arrive"}
           </small>
         </article>
         <article className="insight-tile">
           <Database />
-          <span>Bandwidth reduction</span>
+          <span>Data saved</span>
           <strong>Not measured</strong>
-          <small>Requires raw-video and transmitted-byte measurements</small>
+          <small>We need to compare video size with uploaded data first</small>
         </article>
       </div>
       <div className="model-grid">
@@ -82,10 +81,10 @@ export const MlOpsView = ({ buses }: { buses: Bus[] }) => {
             <h2>{m.name}</h2>
             <p>{m.status}</p>
             <dl>
-              <dt>Accuracy / mAP</dt>
+              <dt>Detection accuracy</dt>
               <dd>Not verified</dd>
-              <dt>Field validation</dt>
-              <dd>Pending</dd>
+              <dt>Tested on real streets</dt>
+              <dd>Not checked yet</dd>
             </dl>
             <small>{m.scope}</small>
           </article>

@@ -22,7 +22,7 @@ export function LoginView() {
         </p>
         <div className="login-assurance">
           <ShieldCheck size={22} />
-          <span>Authorized access to your operational data</span>
+          <span>Your city data, available to your team</span>
         </div>
       </section>
       <form
@@ -44,9 +44,9 @@ export function LoginView() {
           }
         }}
       >
-        <div className="eyebrow">BACKEND WORKSPACE</div>
+        <div className="eyebrow">BACKEND START HERE</div>
         <h2>Welcome back</h2>
-        <p>Sign in with an account registered on your backend.</p>
+        <p>Use the account created by your team administrator.</p>
         <label>
           Username
           <input name="username" autoComplete="username" required autoFocus />

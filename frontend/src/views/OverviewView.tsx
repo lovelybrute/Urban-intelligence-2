@@ -1,3 +1,4 @@
+import { CityScene } from "../components/CityScene";
 import { AnimatedNumber } from "../components/Motion";
 import React, { useState } from "react";
 import type { Bus, UrbanEvent, Alert, RoadSegment, Route } from "../types";
@@ -33,12 +34,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const active = buses.filter((b) => b.status === "active");
-  const telemetry = active.filter((b) => typeof b.edge_fps === "number");
-  const fps = telemetry.length
-    ? (
-        telemetry.reduce((sum, b) => sum + b.edge_fps!, 0) / telemetry.length
-      ).toFixed(1)
-    : "—";
   const critical = alerts.filter(
     (a) => a.category === "critical" && a.status === "active",
   ).length;
@@ -62,17 +57,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
   const metrics = [
     {
-      label: "Buses scanning now",
+      label: "Buses on the road",
       value: active.length,
-      detail: `${buses.length} buses connected`,
+      detail: `${buses.length} buses in fleet`,
       icon: BusIcon,
       tab: "fleet",
       tone: "blue",
     },
     {
-      label: "Road problems found",
+      label: "Road hazards",
       value: defects,
-      detail: "Problems seen by bus cameras",
+      detail: "Problems in this view",
       icon: AlertTriangle,
       tab: "roads",
       tone: "amber",
@@ -80,19 +75,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     {
       label: "Urgent alerts",
       value: critical,
-      detail: "Need attention now",
+      detail: "Waiting for a review",
       icon: ShieldAlert,
       tab: "alerts",
       tone: "red",
     },
     {
-      label: "AI camera speed",
-      value: fps,
-      detail: telemetry.length
-        ? `${fps} frames/sec · ${telemetry.length} buses`
-        : "Camera speed unavailable",
+      label: "Bus routes",
+      value: routes.length,
+      detail: "See where each journey goes",
       icon: Activity,
-      tab: "mlops",
+      tab: "routes",
       tone: "teal",
     },
   ];
@@ -100,12 +93,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     <div className="overview">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">LIVE CITY OVERVIEW</div>
+          <div className="eyebrow">YOUR CITY AT A GLANCE</div>
           <h1>
-            City overview<span>.</span>
+            A clearer view of your city<span>.</span>
           </h1>
           <p>
-            See buses, road conditions, traffic, and urgent incidents in one place.
+            See your buses, check road problems, and find what needs attention.
           </p>
         </div>
         <button
@@ -115,21 +108,23 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           Incident reports <ArrowUpRight size={16} />
         </button>
       </div>
+      <CityScene busCount={buses.length} eventCount={events.length} onExplore={setActiveTab}/>
+      <div className="quick-start"><span>Start here</span>{[{title:"Find a problem",detail:"Explore the map",tab:"live-map"},{title:"See the details",detail:"Open a report",tab:"reports"},{title:"Choose what comes next",detail:"Review alerts",tab:"alerts"}].map((step,i)=><button key={step.tab} onClick={()=>setActiveTab(step.tab)}><b>0{i+1}</b><div><strong>{step.title}</strong><small>{step.detail}</small></div><ArrowUpRight size={16}/></button>)}</div>
       <div className="priority-banner">
         <div className="priority-icon">
           <ShieldAlert size={24} />
         </div>
         <div>
-          <span className="eyebrow">WHAT NEEDS ATTENTION</span>
+          <span className="eyebrow">NEEDS YOUR ATTENTION</span>
           <h2>
             {critical
-              ? `${critical} critical alerts need attention`
+              ? `${critical} urgent alerts need attention`
               : "Your city overview is ready"}
           </h2>
           <p>
             {critical
-              ? "Open the alerts, check the proof, and decide what to do next."
-              : "See what buses found, where it happened, and what needs attention."}
+              ? "Open an alert, check the details, and decide what to do next."
+              : "Explore your buses, road conditions, and recent reports."}
           </p>
         </div>
         <button
@@ -164,7 +159,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <section className="panel map-panel">
           <div className="section-heading">
             <div>
-              <h2>Live city map</h2>
+              <h2>See what is happening</h2>
               <span>
                 <MapPin size={13} /> Hyderabad, Telangana
               </span>
@@ -186,23 +181,23 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           />
           <div className="map-caption">
             <span>{routes.length} routes in view</span>
-            <span>Choose a marker to see what was detected</span>
+            <span>Tap a pin to see the details</span>
           </div>
         </section>
         <section className="panel feed-panel">
           <div className="section-heading">
             <div>
-              <h2>Latest detections</h2>
+              <h2>Recent reports</h2>
               <span>{events.length} recorded events</span>
             </div>
-            <span className="badge badge-neutral">Recent activity</span>
+            <span className="badge badge-neutral">Ready to review</span>
           </div>
           <label className="feed-search">
             <Search size={16} />
             <input
               type="search"
-              placeholder="Search what buses found…"
-              aria-label="Search detections"
+              placeholder="Search reports…"
+              aria-label="Search reports"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -210,7 +205,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <div className="feed-filters">
             {[
               ["all", "All events"],
-              ["priority", "Urgent"],
+              ["priority", "High priority"],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -252,14 +247,14 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                       Bus {e.bus_id} · {Math.round(e.confidence * 100)}%
                       confidence
                     </span>
-                    {e.is_simulated && <span>Simulated</span>}
+                    {e.is_simulated && <span>Demo data</span>}
                   </div>
                 </button>
               ))
             ) : (
               <div className="empty-state">
                 <Search size={25} />
-                <h3>No matching detections</h3>
+                <h3>No matching reports</h3>
                 <p>Try another search or select all events.</p>
               </div>
             )}
@@ -269,8 +264,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       <section className="corridor-section">
         <div className="section-heading">
           <div>
-            <h2>Road conditions</h2>
-            <span>See which roads need attention first</span>
+            <h2>Road condition watch</h2>
+            <span>Find the roads that need repairs first</span>
           </div>
           <button
             className="btn btn-ghost"
@@ -301,7 +296,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                 />
               </div>
               <footer>
-                <span>{r.defect_count} problems found</span>
+                <span>{r.defect_count} problems reported</span>
                 <strong>{r.condition_score}/100</strong>
               </footer>
             </button>

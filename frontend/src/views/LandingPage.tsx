@@ -1,3 +1,4 @@
+import { CityScene } from "../components/CityScene";
 import { Reveal, MotionToggle } from "../components/Motion";
 import React from "react";
 import {
@@ -30,7 +31,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <Layers size={22} />
         </span>
         <span>
-          Urban Intelligence<small>MOBILE URBAN SENSING</small>
+          Urban Intelligence<small>SAFER STREETS. TOGETHER.</small>
         </span>
       </div>
       <div className="site-nav-links">
@@ -43,7 +44,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               ?.scrollIntoView({ behavior: "smooth" });
           }}
         >
-          Capabilities
+          What you can do
         </a>
         <span>SIH 26124</span>
         <MotionToggle />
@@ -66,25 +67,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           We connect <em>the dots.</em>
         </h1>
         <p>
-          Buses scan the streets while they travel. Our platform spots road problems, traffic, and safety risks, then shows exactly where they happened.
+          Every bus journey can help make streets safer. See road problems,
+          busy traffic, and safety alerts together in one simple place.
         </p>
         <div className="hero-actions">
           <button
             className="btn btn-primary btn-lg"
             onClick={() => onOpenDashboard("overview")}
           >
-            See the live city <ArrowRight size={18} />
+            Explore your city <ArrowRight size={18} />
           </button>
           <button
             className="btn btn-ghost btn-lg"
             onClick={() => onOpenDashboard("live-map")}
           >
-            Open city map <MapPin size={17} />
+            See the city map <MapPin size={17} />
           </button>
         </div>
         <div className="prototype-note">
           <ShieldCheck size={16} />
-          <span>Working prototype · AI validation in progress</span>
+          <span>Demo available · AI is still being tested</span>
         </div>
       </div>
       <div className="hero-map-stage">
@@ -105,10 +107,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           />
           <div className="hero-map-footer">
             <span>
-              <Bus size={17} /> Mobile sensing
+              <Bus size={17} /> Cameras on buses
             </span>
             <span>
-              <ScanLine size={17} /> Geo-tagged detections
+              <ScanLine size={17} /> Reports with a location
             </span>
           </div>
         </div>
@@ -117,8 +119,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <ScanLine size={18} />
           </span>
           <div>
-            <strong>From a street signal to a city insight</strong>
-            <small>Capture · Locate · Review</small>
+            <strong>Spot it. Find it. Take action.</strong>
+            <small>Camera · Map · Review</small>
           </div>
         </div>
       </div>
@@ -128,11 +130,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {[
           { icon: Camera, title: "Capture", detail: "Bus cameras + GPS" },
           { icon: Cpu, title: "Understand", detail: "AI checks the video" },
-          { icon: MapPin, title: "Locate", detail: "Pins it on the map" },
+          { icon: MapPin, title: "Locate", detail: "Photos with a location" },
           {
             icon: ShieldCheck,
             title: "Respond",
-            detail: "Teams review + respond",
+            detail: "City teams take action",
           },
         ].map((s, i) => (
           <div key={s.title}>
@@ -147,40 +149,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         ))}
       </section>
     </Reveal>
+    <Reveal><CityScene compact busCount={MOCK_BUSES.length} eventCount={MOCK_EVENTS.length} onExplore={onOpenDashboard}/></Reveal>
     <Reveal>
       <section id="capabilities" className="landing-capabilities">
         <div className="capability-intro">
-          <div className="eyebrow">ONE BUS NETWORK. A CLEARER CITY.</div>
+          <div className="eyebrow">ONE CITY. A CLEARER PICTURE.</div>
           <h2>
-            See what is happening.
+            Small details.
             <br />
-            Know where to act.
+            A safer city.
           </h2>
           <p>
-            One simple place to see road problems, traffic, safety risks, and incidents.
+            A shared workspace for transport teams, road maintenance, and
+            incident review.
           </p>
         </div>
         <div className="landing-features">
           {[
             {
               icon: Route,
-              title: "Road problems",
+              title: "Roads & repairs",
               description:
-                "See potholes, waterlogging, and damaged roads with their exact location.",
+                "Find potholes, flooded roads, and broken signs on the map.",
               tab: "roads",
             },
             {
               icon: Bus,
-              title: "Traffic",
+              title: "Buses & traffic",
               description:
-                "See busy roads, congestion, bus routes, and movement across the city.",
+                "See where buses travel and where traffic gets busy.",
               tab: "traffic",
             },
             {
               icon: ShieldCheck,
               title: "Safety & incidents",
               description:
-                "See safety risks and vehicle incidents with location, time, and visual proof.",
+                "Check safety risks and vehicle incidents with photos and details.",
               tab: "incidents",
             },
           ].map((f) => (
@@ -202,7 +206,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     </Reveal>
     <footer className="site-footer">
       <span>Urban Intelligence / SIH 26124</span>
-      <span>Public transport. Shared intelligence. Safer streets.</span>
+      <span>Every journey can make a difference.</span>
     </footer>
   </main>
 );
