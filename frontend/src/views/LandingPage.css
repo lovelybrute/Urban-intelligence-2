@@ -680,3 +680,18 @@
     margin-top: 22px;
   }
 }
+
+
+/* Immersive landing v2 */
+.landing-page::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(127,232,203,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(127,232,203,.025) 1px,transparent 1px);background-size:54px 54px;mask-image:linear-gradient(to bottom,black,transparent 72%)}
+.site-nav{backdrop-filter:blur(12px);position:sticky;top:0}
+.hero-map-stage{transform-style:preserve-3d}
+.hero-map{will-change:transform;box-shadow:0 55px 120px #000a,0 0 100px #6ac6e518}
+.hero-map::after{content:"";position:absolute;inset:0;border-radius:20px;pointer-events:none;box-shadow:inset 0 0 45px rgba(100,226,199,.045)}
+.map-floating-note{transform:translateZ(60px)}
+.landing-feature{position:relative;overflow:hidden}
+.landing-feature::after{content:"";position:absolute;width:90px;height:90px;right:-45px;top:50%;transform:translateY(-50%);border-radius:50%;background:radial-gradient(circle,rgba(113,231,201,.13),transparent 70%);opacity:0;transition:opacity .3s}
+.landing-feature:hover::after{opacity:1}
+.sensing-flow>div{transition:transform .3s ease}
+.sensing-flow>div:hover{transform:translateY(-5px)}
+@media (prefers-reduced-motion:reduce){.sensing-flow>div:hover{transform:none}}
