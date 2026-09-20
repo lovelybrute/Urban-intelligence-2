@@ -1,0 +1,15 @@
+# Infrastructure dataset for YOLO training.
+# Put images/labels under frontend/ml/datasets/infrastructure/{train,val}/
+path: ../datasets/infrastructure
+train: train/images
+val: val/images
+
+names:
+  0: zebra_crossing
+  1: damaged_zebra_crossing
+  2: road_divider
+  3: damaged_divider
+  4: traffic_sign
+  5: damaged_traffic_sign
+  6: waterlogging
+  7: road_debris
