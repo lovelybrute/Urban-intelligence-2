@@ -14,7 +14,7 @@ try:
 except ImportError:
     YOLO = None
 
-VEHICLES={"car","motorcycle","bus","truck","bicycle"}
+VEHICLES={"car","motorcycle","bus","truck","bicycle","auto_rickshaw","emergency"}
 REPO_ROOT=Path(__file__).resolve().parents[3]
 BACKEND_WEIGHTS=Path(__file__).resolve().parents[2]/"ml"/"weights"
 REPO_WEIGHTS=REPO_ROOT/"frontend"/"ml"/"weights"
