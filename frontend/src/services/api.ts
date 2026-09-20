@@ -8,6 +8,7 @@ import {
   Alert,
   RoadSegment,
   MaintenanceItem,
+  RoadDetectionResult,
 } from "../types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
@@ -757,6 +758,24 @@ const BACKEND_SCENARIOS = [
 ];
 
 export const apiClient = {
+    detectRoad: async (
+    file: File,
+    confidence = 0.25,
+  ): Promise<RoadDetectionResult> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await request(
+      `/detect/road?confidence=${encodeURIComponent(confidence)}`,
+      {
+        method: "POST",
+        body: formData,
+        signal: AbortSignal.timeout(120000),
+      },
+    );
+
+    return response.json();
+  },
   getBuses: async (): Promise<Bus[]> => {
     if (DEMO_MODE) return MOCK_BUSES;
     const rows = await getCollection<any>("/buses/", []);

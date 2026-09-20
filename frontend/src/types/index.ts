@@ -142,3 +142,22 @@ export interface SystemStats {
   avg_edge_fps: number;
   system_health_pct: number;
 }
+export interface RoadDetectionBox {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export interface RoadDetection {
+  class_id: number;
+  class_name: string;
+  confidence: number;
+  bbox: RoadDetectionBox;
+}
+
+export interface RoadDetectionResult {
+  model: string;
+  detection_count: number;
+  detections: RoadDetection[];
+}
