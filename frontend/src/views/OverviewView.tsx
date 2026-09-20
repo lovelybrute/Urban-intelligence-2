@@ -249,7 +249,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                   <p>{e.description}</p>
                   <div className="event-card-bottom">
                     <span>
-                      Bus {e.bus_id} · {Math.round(e.AI confidence * 100)}%
+                      Bus {e.bus_id} · {Math.round(e.confidence * 100)}%
                       confidence
                     </span>
                     {e.is_simulated && <span>Simulated</span>}
