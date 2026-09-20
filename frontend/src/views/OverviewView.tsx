@@ -62,35 +62,35 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
   const metrics = [
     {
-      label: "Active sensing buses",
+      label: "Buses scanning now",
       value: active.length,
-      detail: `${buses.length} buses in fleet`,
+      detail: `${buses.length} buses connected`,
       icon: BusIcon,
       tab: "fleet",
       tone: "blue",
     },
     {
-      label: "Road hazards",
+      label: "Road problems found",
       value: defects,
-      detail: "Detections in current dataset",
+      detail: "Problems seen by bus cameras",
       icon: AlertTriangle,
       tab: "roads",
       tone: "amber",
     },
     {
-      label: "Critical alerts",
+      label: "Urgent alerts",
       value: critical,
-      detail: "Awaiting attention",
+      detail: "Need attention now",
       icon: ShieldAlert,
       tab: "alerts",
       tone: "red",
     },
     {
-      label: "AI processing",
+      label: "AI camera speed",
       value: fps,
       detail: telemetry.length
-        ? `FPS · ${telemetry.length} reporting buses`
-        : "Telemetry not available",
+        ? `${fps} frames/sec · ${telemetry.length} buses`
+        : "Camera speed unavailable",
       icon: Activity,
       tab: "mlops",
       tone: "teal",
@@ -120,7 +120,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <ShieldAlert size={24} />
         </div>
         <div>
-          <span className="eyebrow">OPERATOR BRIEFING</span>
+          <span className="eyebrow">WHAT NEEDS ATTENTION</span>
           <h2>
             {critical
               ? `${critical} critical alerts need attention`
@@ -128,8 +128,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </h2>
           <p>
             {critical
-              ? "Review the evidence queue and coordinate the next action."
-              : "Explore fleet observations, road conditions, and the latest detections."}
+              ? "Open the alerts, check the proof, and decide what to do next."
+              : "See what buses found, where it happened, and what needs attention."}
           </p>
         </div>
         <button
@@ -164,7 +164,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <section className="panel map-panel">
           <div className="section-heading">
             <div>
-              <h2>City sensing map</h2>
+              <h2>Live city map</h2>
               <span>
                 <MapPin size={13} /> Hyderabad, Telangana
               </span>
@@ -186,7 +186,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           />
           <div className="map-caption">
             <span>{routes.length} routes in view</span>
-            <span>Choose a marker to inspect evidence</span>
+            <span>Choose a marker to see what was detected</span>
           </div>
         </section>
         <section className="panel feed-panel">
@@ -195,13 +195,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               <h2>Latest detections</h2>
               <span>{events.length} recorded events</span>
             </div>
-            <span className="badge badge-neutral">Evidence queue</span>
+            <span className="badge badge-neutral">Recent activity</span>
           </div>
           <label className="feed-search">
             <Search size={16} />
             <input
               type="search"
-              placeholder="Search detections…"
+              placeholder="Search what buses found…"
               aria-label="Search detections"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -210,7 +210,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <div className="feed-filters">
             {[
               ["all", "All events"],
-              ["priority", "High priority"],
+              ["priority", "Urgent"],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -249,7 +249,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                   <p>{e.description}</p>
                   <div className="event-card-bottom">
                     <span>
-                      Bus {e.bus_id} · {Math.round(e.confidence * 100)}%
+                      Bus {e.bus_id} · {Math.round(e.AI confidence * 100)}%
                       confidence
                     </span>
                     {e.is_simulated && <span>Simulated</span>}
@@ -270,7 +270,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <div className="section-heading">
           <div>
             <h2>Road conditions</h2>
-            <span>Prioritize maintenance by corridor</span>
+            <span>See which roads need attention first</span>
           </div>
           <button
             className="btn btn-ghost"
@@ -301,7 +301,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                 />
               </div>
               <footer>
-                <span>{r.defect_count} defects recorded</span>
+                <span>{r.defect_count} problems found</span>
                 <strong>{r.condition_score}/100</strong>
               </footer>
             </button>
