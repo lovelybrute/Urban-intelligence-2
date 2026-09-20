@@ -47,6 +47,7 @@ export const GisMap: React.FC<GisMapProps> = ({
   const [layersOpen, setLayersOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"street" | "satellite" | "topo">("street");
   const [mapReady, setMapReady] = useState(false);
+  const controlsRef = useRef<HTMLDivElement>(null);
 
   // Layer filter toggles
   const [showBuses, setShowBuses] = useState(true);
@@ -87,6 +88,12 @@ export const GisMap: React.FC<GisMapProps> = ({
     baseLayerRef.current = street;
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
+    map.dragging.enable();
+    map.scrollWheelZoom.enable();
+    map.doubleClickZoom.enable();
+    map.touchZoom.enable();
+    map.boxZoom.enable();
+    map.keyboard.enable();
 
     routesLayerRef.current = L.layerGroup().addTo(map);
     markersLayerRef.current = L.layerGroup().addTo(map);
@@ -102,6 +109,12 @@ export const GisMap: React.FC<GisMapProps> = ({
       mapInstanceRef.current = null;
       setMapReady(false);
     };
+  }, []);
+
+  useEffect(() => {
+    if (!controlsRef.current) return;
+    L.DomEvent.disableClickPropagation(controlsRef.current);
+    L.DomEvent.disableScrollPropagation(controlsRef.current);
   }, []);
 
   // Keep Leaflet sized and draggable when its card animates or the viewport changes.
@@ -484,6 +497,7 @@ export const GisMap: React.FC<GisMapProps> = ({
       )}
       {/* Floating Layer Controls */}
       <div
+        ref={controlsRef}
         className="panel map-layer-controls"
         style={{
           position: "absolute",
