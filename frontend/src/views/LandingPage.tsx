@@ -66,22 +66,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           We connect <em>the dots.</em>
         </h1>
         <p>
-          Turn everyday bus journeys into actionable street intelligence. Detect
-          road hazards, understand traffic, and bring critical incidents into
-          focus.
+          Buses scan the streets while they travel. Our platform spots road problems, traffic, and safety risks, then shows exactly where they happened.
         </p>
         <div className="hero-actions">
           <button
             className="btn btn-primary btn-lg"
             onClick={() => onOpenDashboard("overview")}
           >
-            Explore command center <ArrowRight size={18} />
+            See the live city <ArrowRight size={18} />
           </button>
           <button
             className="btn btn-ghost btn-lg"
             onClick={() => onOpenDashboard("live-map")}
           >
-            View sensing map <MapPin size={17} />
+            Open city map <MapPin size={17} />
           </button>
         </div>
         <div className="prototype-note">
@@ -129,12 +127,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section className="sensing-flow" aria-label="How the platform works">
         {[
           { icon: Camera, title: "Capture", detail: "Bus cameras + GPS" },
-          { icon: Cpu, title: "Understand", detail: "Edge video analysis" },
-          { icon: MapPin, title: "Locate", detail: "Geo-tagged evidence" },
+          { icon: Cpu, title: "Understand", detail: "AI checks the video" },
+          { icon: MapPin, title: "Locate", detail: "Pins it on the map" },
           {
             icon: ShieldCheck,
             title: "Respond",
-            detail: "Authority review + action",
+            detail: "Teams review + respond",
           },
         ].map((s, i) => (
           <div key={s.title}>
@@ -152,38 +150,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <Reveal>
       <section id="capabilities" className="landing-capabilities">
         <div className="capability-intro">
-          <div className="eyebrow">ONE FLEET. MULTIPLE PERSPECTIVES.</div>
+          <div className="eyebrow">ONE BUS NETWORK. A CLEARER CITY.</div>
           <h2>
-            Street-level signals.
+            See what is happening.
             <br />
-            City-wide understanding.
+            Know where to act.
           </h2>
           <p>
-            A shared workspace for transport teams, road maintenance, and
-            incident review.
+            One simple place to see road problems, traffic, safety risks, and incidents.
           </p>
         </div>
         <div className="landing-features">
           {[
             {
               icon: Route,
-              title: "Road & infrastructure",
+              title: "Road problems",
               description:
-                "Inspect potholes, waterlogging, and damaged infrastructure with location context.",
+                "See potholes, waterlogging, and damaged roads with their exact location.",
               tab: "roads",
             },
             {
               icon: Bus,
-              title: "Traffic & mobility",
+              title: "Traffic",
               description:
-                "Explore bus routes, congestion, and fleet movement across the city.",
+                "See busy roads, congestion, bus routes, and movement across the city.",
               tab: "traffic",
             },
             {
               icon: ShieldCheck,
               title: "Safety & incidents",
               description:
-                "Review pedestrian risks and vehicle incidents with supporting evidence.",
+                "See safety risks and vehicle incidents with location, time, and visual proof.",
               tab: "incidents",
             },
           ].map((f) => (

@@ -2170,7 +2170,7 @@ body {
 
 @media (max-width: 1200px) {
   .workspace-layout::before {
-    inset-left: 210px;
+    left: 210px;
   }
 }
 
@@ -2185,3 +2185,37 @@ body {
     transform: none;
   }
 }
+
+
+/* Immersive city deck v2 */
+.overview { position:relative; isolation:isolate; }
+.overview::before{
+ content:""; position:fixed; width:520px; height:520px; right:-180px; top:180px;
+ border-radius:50%; pointer-events:none; z-index:-1;
+ background:radial-gradient(circle,rgba(77,214,190,.13),transparent 68%);
+ filter:blur(28px); animation:cityAura 10s ease-in-out infinite alternate;
+}
+.page-heading{position:relative;overflow:hidden;padding:22px 24px;border:1px solid rgba(255,255,255,.07);border-radius:22px;background:linear-gradient(135deg,rgba(18,36,44,.74),rgba(8,20,26,.45));backdrop-filter:blur(16px)}
+.page-heading::after{content:"LIVE";position:absolute;right:24px;bottom:18px;font:700 9px var(--font-mono);letter-spacing:2px;color:#91efd3;opacity:.6}
+.priority-banner{animation:deckFloat 7s ease-in-out infinite;will-change:transform}
+.metric-card{transition:transform .38s cubic-bezier(.2,.8,.2,1),box-shadow .38s,border-color .38s;will-change:transform}
+.metric-card:hover{transform:translateY(-12px) rotateX(5deg) rotateY(-3deg) scale(1.015);border-color:rgba(133,240,210,.25)}
+.metric-top svg{filter:drop-shadow(0 0 9px rgba(113,231,201,.3))}
+.operations-grid{align-items:stretch}
+.map-panel{position:relative;overflow:hidden}
+.map-panel::after{content:"";position:absolute;left:16px;right:16px;top:68px;height:1px;background:linear-gradient(90deg,transparent,#7ee8ca99,transparent);pointer-events:none;animation:scannerLine 4.5s ease-in-out infinite}
+.map-panel .leaflet-container{transform:translateZ(24px);transition:transform .6s ease,filter .6s ease}
+.map-panel:hover .leaflet-container{transform:translateZ(35px) scale(1.008);filter:saturate(.9) contrast(1.03)}
+.feed-panel{transform:translateZ(8px)}
+.event-card{position:relative;overflow:hidden}
+.event-card::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;border-radius:2px;background:#78e4c6;transform:scaleY(0);transition:transform .25s}
+.event-card:hover::before{transform:scaleY(1)}
+.corridor-grid{perspective:1200px}
+.corridor-card:hover{transform:translateY(-9px) rotateX(4deg) rotateY(-2deg) scale(1.01)}
+.sidebar{box-shadow:18px 0 60px rgba(0,0,0,.18)}
+.mode-banner{backdrop-filter:blur(14px);background:linear-gradient(90deg,rgba(10,25,31,.95),rgba(13,38,43,.92),rgba(10,25,31,.95))}
+.badge{backdrop-filter:blur(8px)}
+@keyframes cityAura{to{transform:translate(-90px,70px) scale(1.2);opacity:.7}}
+@keyframes deckFloat{0%,100%{transform:translateY(0) rotateX(0)}50%{transform:translateY(-4px) rotateX(.5deg)}}
+@keyframes scannerLine{0%,100%{transform:translateY(0);opacity:.15}50%{transform:translateY(420px);opacity:.65}}
+@media (prefers-reduced-motion:reduce){.priority-banner,.overview::before,.map-panel::after{animation:none!important}}
