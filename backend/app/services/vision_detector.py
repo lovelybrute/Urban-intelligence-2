@@ -1,12 +1,15 @@
 from io import BytesIO
 from pathlib import Path
+import os
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 try:
+    import torch
     from ultralytics import YOLO
 except ImportError:
+    torch = None
     YOLO = None
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -14,6 +17,7 @@ BACKEND_WEIGHTS = Path(__file__).resolve().parents[2] / "ml" / "weights"
 REPO_WEIGHTS = REPO_ROOT / "frontend" / "ml" / "weights"
 WEIGHTS = BACKEND_WEIGHTS if BACKEND_WEIGHTS.exists() else REPO_WEIGHTS
 _traffic = None
+INFERENCE_SIZE = int(os.getenv("TRAFFIC_AI_IMGSZ", "320"))
 
 VEHICLE_CLASSES = {"car", "motorcycle", "bus", "truck", "bicycle"}
 PERSON_CLASS = "person"
@@ -23,6 +27,8 @@ def _load_traffic():
     if YOLO is None:
         raise RuntimeError("Ultralytics is not installed")
     if _traffic is None:
+        if torch is not None:
+            torch.set_num_threads(max(1, int(os.getenv("TORCH_NUM_THREADS", "1"))))
         custom = WEIGHTS / "traffic_india.pt"
         local = WEIGHTS / "traffic_coco.pt"
         # YOLO11n is an official pretrained fallback, not a custom-trained model.
@@ -45,12 +51,14 @@ def detect_scene(raw: bytes, confidence: float = 0.25):
     try:
         with Image.open(BytesIO(raw)) as image:
             image.load()
-            frame = np.array(image.convert("RGB"))
+            image = image.convert("RGB")
+            image.thumbnail((640, 640))
+            frame = np.array(image)
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")
 
     model = _load_traffic()
-    results = model.predict(source=frame, conf=confidence, verbose=False)
+    results = model.predict(source=frame, conf=confidence, verbose=False, imgsz=INFERENCE_SIZE, device="cpu")
     detections = []
     counts = {}
     people = 0
