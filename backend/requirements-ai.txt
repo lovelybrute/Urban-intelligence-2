@@ -1,0 +1,5 @@
+# Heavy AI worker dependencies.
+# Keep these separate from the lightweight Render web service.
+-r requirements.txt
+paddleocr==2.9.1
+paddlepaddle==2.6.2
