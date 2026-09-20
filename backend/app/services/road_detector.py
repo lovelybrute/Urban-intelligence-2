@@ -14,7 +14,9 @@ except ImportError:  # Optional: edge nodes normally perform GPU inference.
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
+BACKEND_MODEL_PATH = Path(__file__).resolve().parents[2] / "ml" / "weights" / "road_defect_best.pt"
+REPO_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
+MODEL_PATH = BACKEND_MODEL_PATH if BACKEND_MODEL_PATH.exists() else REPO_MODEL_PATH
 
 _model = None
 INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
@@ -45,9 +47,14 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
         with Image.open(BytesIO(raw)) as image:
             image.load()
             image = image.convert("RGB")
-            # Bound input size before NumPy conversion to reduce RAM/CPU pressure.
+            original_width, original_height = image.size
+            # Keep RAM bounded on small deployment instances while preserving
+            # original-coordinate boxes for the frontend.
             image.thumbnail((640, 640))
             frame = np.array(image)
+            frame_height, frame_width = frame.shape[:2]
+            scale_x = original_width / frame_width
+            scale_y = original_height / frame_height
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")
 
@@ -92,14 +99,3 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
             )
 
     return detections
-
-
-def road_model_health():
-    """Lightweight readiness check that does not load the model into memory."""
-    return {
-        "road_model_ready": MODEL_PATH.exists(),
-        "weight": MODEL_PATH.name,
-        "ultralytics_ready": YOLO is not None,
-        "inference_size": INFERENCE_SIZE,
-        "device": "cpu",
-    }
