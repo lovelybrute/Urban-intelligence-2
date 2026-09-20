@@ -86,7 +86,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       tone: "red",
     },
     {
-      label: "Edge processing",
+      label: "AI processing",
       value: fps,
       detail: telemetry.length
         ? `FPS · ${telemetry.length} reporting buses`
@@ -100,12 +100,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     <div className="overview">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">OPERATIONS / OVERVIEW</div>
+          <div className="eyebrow">LIVE CITY OVERVIEW</div>
           <h1>
-            City command center<span>.</span>
+            City overview<span>.</span>
           </h1>
           <p>
-            Your fleet, street conditions, and priority incidents in one place.
+            See buses, road conditions, traffic, and urgent incidents in one place.
           </p>
         </div>
         <button
@@ -192,7 +192,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <section className="panel feed-panel">
           <div className="section-heading">
             <div>
-              <h2>Detection feed</h2>
+              <h2>Latest detections</h2>
               <span>{events.length} recorded events</span>
             </div>
             <span className="badge badge-neutral">Evidence queue</span>
@@ -269,7 +269,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       <section className="corridor-section">
         <div className="section-heading">
           <div>
-            <h2>Road condition watch</h2>
+            <h2>Road conditions</h2>
             <span>Prioritize maintenance by corridor</span>
           </div>
           <button
