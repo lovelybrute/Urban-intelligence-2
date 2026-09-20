@@ -26,7 +26,7 @@ jobs:
 
       - name: Run Backend, Edge & Simulator Test Suite
         run: |
-          pytest tests/ -v
+          PYTHONPATH=. pytest tests/ -v
 
   frontend-build:
     runs-on: ubuntu-latest
