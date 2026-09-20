@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
@@ -49,6 +50,11 @@ async def detect_traffic_scene(file: UploadFile = File(...), confidence: float =
 
 @router.post("/video")
 async def detect_video_events(file: UploadFile = File(...), confidence: float = 0.25):
+    if os.getenv("AI_HEAVY_VIDEO_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+        raise HTTPException(
+            status_code=503,
+            detail="Video AI is disabled on the lightweight web service. Enable AI_HEAVY_VIDEO_ENABLED on a dedicated inference worker.",
+        )
     # Larger cap than still images; kept bounded for public API safety.
     raw = await file.read(25 * 1024 * 1024 + 1)
     await file.close()
