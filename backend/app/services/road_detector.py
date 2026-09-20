@@ -47,9 +47,14 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
         with Image.open(BytesIO(raw)) as image:
             image.load()
             image = image.convert("RGB")
-            # Keep CPU inference bounded on small deployment instances.
+            original_width, original_height = image.size
+            # Keep RAM bounded on small deployment instances while preserving
+            # original-coordinate boxes for the frontend.
             image.thumbnail((640, 640))
             frame = np.array(image)
+            frame_height, frame_width = frame.shape[:2]
+            scale_x = original_width / frame_width
+            scale_y = original_height / frame_height
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")
 
@@ -73,10 +78,11 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
             class_id = int(box.cls[0].item())
             score = float(box.conf[0].item())
 
-            x1, y1, x2, y2 = [
-                round(float(v), 2)
-                for v in box.xyxy[0].tolist()
-            ]
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            x1 = round(float(x1) * scale_x, 2)
+            y1 = round(float(y1) * scale_y, 2)
+            x2 = round(float(x2) * scale_x, 2)
+            y2 = round(float(y2) * scale_y, 2)
 
             detections.append(
                 {
