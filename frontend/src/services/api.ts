@@ -783,19 +783,9 @@ export const apiClient = {
     file: File,
     confidence = 0.25,
   ): Promise<RoadDetectionResult> => {
-    // Wake/check the free backend before starting expensive inference.
-    const healthResponse = await request("/detect/health", {
-      signal: AbortSignal.timeout(70000),
-    });
-    const health = await healthResponse.json();
-    const roadReady =
-      health?.road_model_ready ?? health?.road_defect?.ready ?? true;
-    const runtimeReady =
-      health?.ultralytics_ready ?? health?.road_defect?.ready ?? true;
-    if (!roadReady || !runtimeReady) {
-      throw new Error("Road AI model is not ready on the backend.");
-    }
-
+    // Send the image directly. A separate health preflight can fail in the
+    // browser even when the inference endpoint is healthy, and it doubles the
+    // number of cross-origin requests to the sleeping Render service.
     const formData = new FormData();
     formData.append("file", file);
 
