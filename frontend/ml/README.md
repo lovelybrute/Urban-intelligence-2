@@ -53,6 +53,7 @@ From the repository root:
 
 This verifies the trained 50-epoch road model, downloads the official
 Ultralytics COCO checkpoint for traffic/person tracking, checks the OCR engine,
+installs the official CUDA 13.0 PyTorch wheel when an NVIDIA GPU is available,
 and writes `frontend/ml/model_manifest.json`. Pretrained weights are labelled as
 pretrained; they are not reported as custom training.
 

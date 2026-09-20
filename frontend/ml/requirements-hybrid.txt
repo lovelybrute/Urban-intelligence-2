@@ -1,6 +1,4 @@
 ultralytics>=8.4.155,<9
-torch>=2.2
-torchvision>=0.17
 opencv-python>=4.10
 loguru>=0.7
 PyYAML>=6

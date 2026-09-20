@@ -18,7 +18,19 @@ if (-not (Test-Path $VenvPython)) {
 }
 
 & $VenvPython -m pip install --upgrade pip
+
+if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
+    Write-Host "NVIDIA GPU detected. Installing the official CUDA 13.0 PyTorch build..."
+    & $VenvPython -m pip install --upgrade `
+        "torch==2.14.0+cu130" "torchvision==0.29.0+cu130" `
+        --index-url https://download.pytorch.org/whl/cu130
+} else {
+    Write-Host "No NVIDIA driver detected. Installing CPU PyTorch."
+    & $VenvPython -m pip install --upgrade "torch>=2.2" "torchvision>=0.17"
+}
+
 & $VenvPython -m pip install -r (Join-Path $RepoRoot "frontend\ml\requirements-hybrid.txt")
+& $VenvPython -c "import torch; print('PyTorch:', torch.__version__); print('CUDA available:', torch.cuda.is_available()); print('Device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
 & $VenvPython (Join-Path $RepoRoot "frontend\ml\training\prepare_hybrid_models.py")
 
 if (-not (Get-Command tesseract -ErrorAction SilentlyContinue)) {
