@@ -2,7 +2,7 @@ name: Urban Intelligence Platform CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, ai-integration-clean ]
   pull_request:
     branches: [ main, master ]
 
