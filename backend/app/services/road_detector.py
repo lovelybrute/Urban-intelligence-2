@@ -14,7 +14,9 @@ except ImportError:  # Optional: edge nodes normally perform GPU inference.
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
+BACKEND_MODEL_PATH = Path(__file__).resolve().parents[2] / "ml" / "weights" / "road_defect_best.pt"
+REPO_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
+MODEL_PATH = BACKEND_MODEL_PATH if BACKEND_MODEL_PATH.exists() else REPO_MODEL_PATH
 
 _model = None
 INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
@@ -45,7 +47,7 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
         with Image.open(BytesIO(raw)) as image:
             image.load()
             image = image.convert("RGB")
-            # Bound input size before NumPy conversion to reduce RAM/CPU pressure.
+            # Keep CPU inference bounded on small deployment instances.
             image.thumbnail((640, 640))
             frame = np.array(image)
     except (UnidentifiedImageError, OSError):
