@@ -91,3 +91,14 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
             )
 
     return detections
+
+
+def road_model_health():
+    """Lightweight readiness check that does not load the model into memory."""
+    return {
+        "road_model_ready": MODEL_PATH.exists(),
+        "weight": MODEL_PATH.name,
+        "ultralytics_ready": YOLO is not None,
+        "inference_size": INFERENCE_SIZE,
+        "device": "cpu",
+    }
