@@ -1,64 +1,48 @@
-"""
-Urban Intelligence Platform - Road Defect Model Training Pipeline
+"""Train the custom road-defect detector.
 
-Trains a YOLOv8 road defect detector on RDD2022 (India subset) + custom annotations.
-Usage:
-    python ml/training/train_defect_detector.py --epochs 50 --imgsz 640 --batch 16
+Run from any directory:
+python frontend/ml/training/train_defect_detector.py --epochs 50 --batch 4 --device 0
 """
 import argparse
-import sys
-import os
-from loguru import logger
+from pathlib import Path
+from ultralytics import YOLO
 
+HERE = Path(__file__).resolve().parent
+ML_ROOT = HERE.parent
+DATA = ML_ROOT / "configs" / "yolo_road_defect.yaml"
+RUNS = ML_ROOT / "runs"
+WEIGHTS = ML_ROOT / "weights"
 
-def train_defect_model(
-    config_path: str = "ml/configs/yolo_road_defect.yaml",
-    base_model: str = "yolov8s.pt",
-    epochs: int = 50,
-    imgsz: int = 640,
-    batch: int = 16,
-    output_dir: str = "ml/artifacts/defect_detector"
-):
-    try:
-        from ultralytics import YOLO
-        import torch
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        logger.info(f"Initiating road defect detector training on device: {device}")
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--epochs", type=int, default=50)
+    p.add_argument("--batch", type=int, default=4)
+    p.add_argument("--imgsz", type=int, default=640)
+    p.add_argument("--device", default="0")
+    p.add_argument("--base", default="yolov8s.pt")
+    args = p.parse_args()
 
-        model = YOLO(base_model)
-        results = model.train(
-            data=config_path,
-            epochs=epochs,
-            imgsz=imgsz,
-            batch=batch,
-            device=device,
-            project=output_dir,
-            name="train_run",
-            exist_ok=True,
-            mosaic=1.0,
-            mixup=0.1,
-            flipud=0.0,
-            fliplr=0.5
-        )
-        logger.info("Training complete. Saving weights to ml/artifacts/road_defect.pt")
-        # Save best weights
-        best_weights = os.path.join(output_dir, "train_run", "weights", "best.pt")
-        if os.path.exists(best_weights):
-            import shutil
-            shutil.copy(best_weights, "ml/artifacts/road_defect.pt")
-            logger.info("Model saved to ml/artifacts/road_defect.pt")
-    except ImportError:
-        logger.warning(
-            "Ultralytics or PyTorch not installed in current environment. "
-            "To train on GPU: pip install ultralytics torch torchvision"
-        )
-
+    model = YOLO(args.base)
+    result = model.train(
+        data=str(DATA),
+        epochs=args.epochs,
+        batch=args.batch,
+        imgsz=args.imgsz,
+        device=args.device,
+        project=str(RUNS),
+        name="road_defect",
+        exist_ok=True,
+        workers=2,
+        mosaic=1.0,
+        mixup=0.1,
+        fliplr=0.5,
+    )
+    best = Path(result.save_dir) / "weights" / "best.pt"
+    WEIGHTS.mkdir(parents=True, exist_ok=True)
+    target = WEIGHTS / "road_defect_best.pt"
+    target.write_bytes(best.read_bytes())
+    print(f"Saved road model candidate to {target}")
+    print("Validate held-out metrics before replacing the deployed model.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train Road Defect YOLOv8 Model")
-    parser.add_argument("--epochs", type=int, default=50)
-    parser.add_argument("--batch", type=int, default=16)
-    parser.add_argument("--imgsz", type=int, default=640)
-    args = parser.parse_args()
-
-    train_defect_model(epochs=args.epochs, batch=args.batch, imgsz=args.imgsz)
+    main()
