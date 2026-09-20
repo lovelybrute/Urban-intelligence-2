@@ -52,14 +52,32 @@ export async function login(username: string, password: string) {
 export async function request(path: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers);
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    signal: options.signal || AbortSignal.timeout(10000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      signal: options.signal || AbortSignal.timeout(10000),
+    });
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new Error("Backend timed out. The free AI service may still be waking up; try once more.");
+    }
+    throw new Error("Backend is unreachable. Check the deployed API connection.");
+  }
   if (response.status === 401 || (response.status === 403 && !accessToken))
     logout();
-  if (!response.ok) throw new Error(`Request failed (${response.status})`);
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const payload = await response.clone().json();
+      detail = typeof payload?.detail === "string" ? payload.detail : "";
+    } catch {
+      // Keep the status-only fallback when the backend returns non-JSON.
+    }
+    throw new Error(detail || `Request failed (${response.status})`);
+  }
   return response;
 }
 export async function getEvidence(id: number) {
