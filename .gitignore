@@ -49,6 +49,14 @@ ml/artifacts/*.onnx
 ml/artifacts/*.weights
 ml/datasets/raw/
 ml/datasets/processed/
+frontend/ml/.venv/
+frontend/ml/datasets/
+frontend/ml/runs/
+frontend/ml/model_manifest.json
+frontend/ml/weights/traffic_coco.pt
+frontend/ml/weights/traffic_india.pt
+frontend/ml/weights/anpr_plate.pt
+frontend/ml/weights/infrastructure.pt
 
 # Docker
 docker-compose.override.yml

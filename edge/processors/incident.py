@@ -47,12 +47,13 @@ class IncidentProcessor:
         is_bus_stationary: bool = False,
         near_collision: bool = False,
         collision_confirmed: bool = False,
-        departure_confirmed: bool = False
+        departure_confirmed: bool = False,
+        observation_time_sec: Optional[float] = None,
     ) -> Optional[IncidentDetection]:
         """
         Evaluates a vehicle's multi-frame trajectory and dynamics.
         """
-        now = datetime.now(timezone.utc).timestamp()
+        now = observation_time_sec if observation_time_sec is not None else datetime.now(timezone.utc).timestamp()
         center_x = (current_bbox[1] + current_bbox[3]) / 2.0
         center_y = (current_bbox[0] + current_bbox[2]) / 2.0
 

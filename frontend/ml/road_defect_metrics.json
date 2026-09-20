@@ -1,0 +1,20 @@
+{
+  "model": "YOLOv8s",
+  "dataset": "RDD2022",
+  "epochs_completed": 50,
+  "validation_images": 5758,
+  "validation_instances": 9740,
+  "precision": 0.641,
+  "recall": 0.554,
+  "map50": 0.595,
+  "map50_95": 0.322,
+  "inference_ms_per_image": 7.5,
+  "classes": {
+    "longitudinal_crack": {"precision": 0.611, "recall": 0.519, "map50": 0.554, "map50_95": 0.308},
+    "transverse_crack": {"precision": 0.598, "recall": 0.531, "map50": 0.545, "map50_95": 0.267},
+    "alligator_crack": {"precision": 0.683, "recall": 0.596, "map50": 0.658, "map50_95": 0.355},
+    "other_corruption": {"precision": 0.669, "recall": 0.747, "map50": 0.760, "map50_95": 0.477},
+    "pothole": {"precision": 0.645, "recall": 0.379, "map50": 0.456, "map50_95": 0.202}
+  },
+  "validation_note": "Validation metrics from the completed local 50-epoch training run; real-street field validation is still required."
+}

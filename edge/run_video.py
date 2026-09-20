@@ -15,9 +15,18 @@ import cv2
 from edge.processors.road_defect import RoadDefectProcessor
 from edge.processors.traffic import TrafficProcessor
 from edge.processors.safety import SafetyProcessor
+from edge.processors.incident import IncidentProcessor
+from edge.processors.anpr import ANPRProcessor
 from edge.managers.event_queue import EdgeEventQueue
 from edge.managers.spatial_dedup import SpatialDeduplicator
 from edge.managers.privacy import PrivacyFilter
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_ROAD_WEIGHTS = REPO_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
+DEFAULT_TRAFFIC_WEIGHTS = REPO_ROOT / "frontend" / "ml" / "weights" / "traffic_coco.pt"
+CUSTOM_TRAFFIC_WEIGHTS = REPO_ROOT / "frontend" / "ml" / "weights" / "traffic_india.pt"
+DEFAULT_INFRASTRUCTURE_WEIGHTS = REPO_ROOT / "frontend" / "ml" / "weights" / "infrastructure.pt"
+DEFAULT_ANPR_WEIGHTS = REPO_ROOT / "frontend" / "ml" / "weights" / "anpr_plate.pt"
 
 class GPSLog:
     def __init__(self, path):
@@ -42,11 +51,20 @@ async def run(args):
         raise ValueError("Start time must include timezone, e.g. +05:30")
     if args.road_weights and not Path(args.road_weights).is_file():
         raise ValueError("Road weights not found")
+    if args.infrastructure_weights and not Path(args.infrastructure_weights).is_file():
+        raise ValueError("Infrastructure weights not found")
+    if args.anpr_weights and not Path(args.anpr_weights).is_file():
+        raise ValueError("ANPR weights not found")
     road = RoadDefectProcessor(model_path=args.road_weights)
     if args.road_weights and not road.is_model_loaded:
         raise RuntimeError("Road weights failed to load; install edge inference dependencies")
+    infrastructure = RoadDefectProcessor(model_path=args.infrastructure_weights)
+    if args.infrastructure_weights and not infrastructure.is_model_loaded:
+        raise RuntimeError("Infrastructure weights failed to load; install edge inference dependencies")
     traffic = TrafficProcessor(model_path=args.traffic_weights)
     safety = SafetyProcessor()
+    incident = IncidentProcessor()
+    anpr = ANPRProcessor(model_path=args.anpr_weights)
     queue = EdgeEventQueue(args.api, os.environ.get("URBAN_API_TOKEN"), args.queue)
     dedup = SpatialDeduplicator(time_window_seconds=60)
     capture = cv2.VideoCapture(args.video)
@@ -72,6 +90,12 @@ async def run(args):
             "ai_reasoning": reasons, "metadata": {**metadata, "source": "recorded_video", "camera_position": args.camera_position}},
             priority=1 if severity=='critical' else 2 if severity=='high' else 3, evidence_file=evidence)
         emitted += 1
+    def vehicle_crop(frame, bbox):
+        height, width = frame.shape[:2]
+        y1, x1, y2, x2 = bbox
+        left, top = max(0, int(x1 * width)), max(0, int(y1 * height))
+        right, bottom = min(width, int(x2 * width)), min(height, int(y2 * height))
+        return frame[top:bottom, left:right] if right > left and bottom > top else None
     try:
         index = 0
         while True:
@@ -101,9 +125,42 @@ async def run(args):
                 for detection in road.process_frame(frame, args.camera_position, position['latitude'], position['longitude'], position['speed_kmh']):
                     emit(detection.defect_type, detection.severity, detection.confidence, detection.explainability,
                          {**detection.metadata, "bbox": detection.bbox, "method": 'yolo' if road.is_model_loaded else 'opencv_heuristic', "confidence_calibrated": False}, position, timestamp, evidence)
+                if infrastructure.is_model_loaded:
+                    for detection in infrastructure.process_frame(frame, args.camera_position, position['latitude'], position['longitude'], position['speed_kmh']):
+                        emit(detection.defect_type, detection.severity, detection.confidence, detection.explainability,
+                             {**detection.metadata, "bbox": detection.bbox, "method": "custom_infrastructure_yolo", "confidence_calibrated": False}, position, timestamp, evidence)
                 risk = safety.evaluate_pedestrians(traffic.pedestrian_boxes, position['speed_kmh'], position['latitude'], position['longitude'])
                 if risk:
                     emit('pedestrian_risk',risk.risk_level,0.0,risk.explainability,{"method":"uncalibrated_risk_rules","confidence_calibrated":False},position,timestamp,evidence)
+                for vehicle in tracks:
+                    detected_incident = incident.analyze_trajectory(
+                        vehicle.track_id,
+                        vehicle.vehicle_class,
+                        vehicle.bbox,
+                        vehicle.speed_kmh or 0.0,
+                        observation_time_sec=seconds,
+                    )
+                    if detected_incident is None:
+                        continue
+                    plate = anpr.process_vehicle_crop(
+                        vehicle.track_id,
+                        vehicle_crop(frame, vehicle.bbox),
+                    ) if detected_incident.requires_anpr else None
+                    incident_metadata = {
+                        "track_id": vehicle.track_id,
+                        "vehicle_type": vehicle.vehicle_class,
+                        "trajectory": detected_incident.trajectory,
+                        "method": "uncalibrated_temporal_rules",
+                        "confidence_calibrated": False,
+                    }
+                    if plate:
+                        incident_metadata.update({
+                            "plate_number": plate.plate_number,
+                            "plate_confidence": plate.overall_confidence,
+                            "plate_requires_review": plate.requires_manual_verification,
+                        })
+                    emit(detected_incident.incident_type, detected_incident.severity, 0.0,
+                         detected_incident.explainability, incident_metadata, position, timestamp, evidence)
             if traffic.model is not None and seconds-last_traffic >= args.sample_seconds:
                 emit('congestion','high' if metrics.is_bottleneck else 'low',0.0,metrics.explainability,
                      {"vehicle_count": metrics.total_vehicles,"vehicle_breakdown": metrics.counts_by_class,
@@ -123,7 +180,10 @@ async def run(args):
     result={"processed_frames":processed,"events_queued":emitted,"pending_delivery":len(queue.queue),
         "skipped_frames_without_recent_gps":skipped_gps,"processing_fps":round(processed/max(.001,time.perf_counter()-started),2),
         "road_mode":"weights_loaded_unvalidated" if road.is_model_loaded else "opencv_heuristic_unvalidated",
-        "traffic_mode":traffic.status,"accuracy":"NOT MEASURED"}
+        "infrastructure_mode":"weights_loaded_unvalidated" if infrastructure.is_model_loaded else "not_configured",
+        "traffic_mode":traffic.status,
+        "anpr_mode":"detector_and_ocr_unvalidated" if anpr.model is not None else "ocr_only_manual_review",
+        "accuracy":"NOT MEASURED"}
     print(json.dumps(result,indent=2))
     return result
 
@@ -134,8 +194,10 @@ def main():
     parser.add_argument('--start-time',required=True,help='Recording start in ISO 8601 with timezone')
     parser.add_argument('--bus-id',type=int,required=True)
     parser.add_argument('--camera-position',choices=['front','rear','left','right','interior'],default='front')
-    parser.add_argument('--road-weights')
-    parser.add_argument('--traffic-weights')
+    parser.add_argument('--road-weights', default=str(DEFAULT_ROAD_WEIGHTS) if DEFAULT_ROAD_WEIGHTS.is_file() else None)
+    parser.add_argument('--traffic-weights', default=str(CUSTOM_TRAFFIC_WEIGHTS) if CUSTOM_TRAFFIC_WEIGHTS.is_file() else (str(DEFAULT_TRAFFIC_WEIGHTS) if DEFAULT_TRAFFIC_WEIGHTS.is_file() else None))
+    parser.add_argument('--infrastructure-weights', default=str(DEFAULT_INFRASTRUCTURE_WEIGHTS) if DEFAULT_INFRASTRUCTURE_WEIGHTS.is_file() else None)
+    parser.add_argument('--anpr-weights', default=str(DEFAULT_ANPR_WEIGHTS) if DEFAULT_ANPR_WEIGHTS.is_file() else None)
     parser.add_argument('--api',default='http://127.0.0.1:8000')
     parser.add_argument('--queue',default='edge_output/events.json')
     parser.add_argument('--stride',type=int,default=3)

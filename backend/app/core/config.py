@@ -7,7 +7,14 @@ import os
 from pydantic import ConfigDict
 
 _BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_REPO_DIR = os.path.abspath(os.path.join(_BASE_DIR, ".."))
 _DB_PATH = os.path.join(_BASE_DIR, "urban_intelligence.db").replace("\\", "/")
+
+
+def _preferred_weight(custom_name: str, fallback_name: str) -> str:
+    custom = os.path.join(_REPO_DIR, "frontend", "ml", "weights", custom_name)
+    fallback = os.path.join(_REPO_DIR, "frontend", "ml", "weights", fallback_name)
+    return custom if os.path.isfile(custom) else fallback
 
 
 class Settings(BaseSettings):
@@ -46,9 +53,10 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
 
     # ML Models
-    YOLO_MODEL_PATH: str = "ml/artifacts/yolov8n.pt"
-    ROAD_DEFECT_MODEL_PATH: str = "ml/artifacts/road_defect.pt"
-    ANPR_MODEL_PATH: str = "ml/artifacts/anpr.pt"
+    YOLO_MODEL_PATH: str = _preferred_weight("traffic_india.pt", "traffic_coco.pt")
+    ROAD_DEFECT_MODEL_PATH: str = os.path.join(_REPO_DIR, "frontend", "ml", "weights", "road_defect_best.pt")
+    ANPR_MODEL_PATH: str = os.path.join(_REPO_DIR, "frontend", "ml", "weights", "anpr_plate.pt")
+    INFRASTRUCTURE_MODEL_PATH: str = os.path.join(_REPO_DIR, "frontend", "ml", "weights", "infrastructure.pt")
 
     # Simulator
     SIMULATOR_BUS_COUNT: int = 10

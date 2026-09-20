@@ -30,6 +30,16 @@ def test_road_defect_severity():
     assert sev_high == "high"
 
 
+def test_trained_road_labels_are_normalized():
+    """Every class in the supplied RDD checkpoint must reach the platform."""
+    aliases = RoadDefectProcessor.CLASS_ALIASES
+    assert aliases["longitudinal_crack"] == "crack"
+    assert aliases["transverse_crack"] == "crack"
+    assert aliases["alligator_crack"] == "crack"
+    assert aliases["other_corruption"] == "damaged_road"
+    assert aliases["D40"] == "pothole"
+
+
 def test_traffic_processor_congestion_classification():
     """Verify vehicle tracking and congestion level estimation."""
     tp = TrafficProcessor()

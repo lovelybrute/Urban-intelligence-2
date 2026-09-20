@@ -1,0 +1,13 @@
+path: ../datasets/infrastructure
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: waterlogging
+  1: damaged_divider
+  2: missing_divider
+  3: damaged_zebra
+  4: missing_zebra
+  5: damaged_sign
+  6: missing_sign

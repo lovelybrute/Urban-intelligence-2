@@ -38,6 +38,19 @@ class RoadDefectProcessor:
         "damaged_sign", "missing_sign", "road_hazard"
     ]
 
+    # RDD2022 exports descriptive labels while older checkpoints may use D00-D40.
+    # Normalize both formats before the platform filters and stores detections.
+    CLASS_ALIASES = {
+        "D00": "crack",
+        "D10": "crack",
+        "D20": "crack",
+        "D40": "pothole",
+        "longitudinal_crack": "crack",
+        "transverse_crack": "crack",
+        "alligator_crack": "crack",
+        "other_corruption": "damaged_road",
+    }
+
     def __init__(self, confidence_threshold: float = 0.5, model_path: Optional[str] = None):
         self.confidence_threshold = confidence_threshold
         self.model_path = model_path
@@ -85,7 +98,7 @@ class RoadDefectProcessor:
                     cls_id = int(box.cls[0])
                     conf = float(box.conf[0])
                     defect_name = self.model.names.get(cls_id, "road_hazard")
-                    defect_name = {"D00": "crack", "D10": "crack", "D20": "crack", "D40": "pothole"}.get(defect_name, defect_name)
+                    defect_name = self.CLASS_ALIASES.get(defect_name, defect_name)
                     if defect_name not in self.DEFECT_TYPES:
                         continue
                     coords = box.xyxyn[0].tolist()

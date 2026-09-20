@@ -7,6 +7,7 @@ format syntax validation, and confidence calibration.
 """
 import re
 import uuid
+from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -47,8 +48,14 @@ class ANPRProcessor:
         "0": "O", "1": "I", "2": "Z", "5": "S", "8": "B", "6": "G"
     }
 
-    def __init__(self, min_confidence: float = 0.55):
+    def __init__(self, min_confidence: float = 0.55, model_path: Optional[str] = None):
         self.min_confidence = min_confidence
+        self.model = None
+        if model_path:
+            if not Path(model_path).is_file():
+                raise FileNotFoundError(f"ANPR weights missing: {model_path}")
+            from ultralytics import YOLO
+            self.model = YOLO(model_path)
 
     def process_vehicle_crop(
         self,
@@ -81,7 +88,7 @@ class ANPRProcessor:
         overall_conf = round((det_conf * ocr_conf) ** 0.5, 3) if det_conf else round(ocr_conf, 3)
 
         # Guard against hallucination
-        is_low_conf = overall_conf < self.min_confidence or len(cleaned_text) < 6
+        is_low_conf = det_conf <= 0 or overall_conf < self.min_confidence or len(cleaned_text) < 6
         final_plate_number = cleaned_text if (not is_low_conf and is_valid) else ("UNKNOWN" if is_low_conf else f"{cleaned_text} (UNVERIFIED)")
         requires_manual = is_low_conf or not is_valid or vehicle_image_array is not None
 
@@ -114,7 +121,21 @@ class ANPRProcessor:
         try:
             import cv2
             import numpy as np
-            gray = cv2.cvtColor(frame_crop, cv2.COLOR_BGR2GRAY)
+            plate_crop = frame_crop
+            detection_confidence = 0.0
+            if self.model is not None:
+                results = self.model(frame_crop, conf=0.35, verbose=False)
+                candidates = [box for result in results for box in result.boxes]
+                if candidates:
+                    best = max(candidates, key=lambda box: float(box.conf[0]))
+                    x1, y1, x2, y2 = [int(value) for value in best.xyxy[0].tolist()]
+                    height, width = frame_crop.shape[:2]
+                    x1, y1 = max(0, x1), max(0, y1)
+                    x2, y2 = min(width, x2), min(height, y2)
+                    if x2 > x1 and y2 > y1:
+                        plate_crop = frame_crop[y1:y2, x1:x2]
+                        detection_confidence = float(best.conf[0])
+            gray = cv2.cvtColor(plate_crop, cv2.COLOR_BGR2GRAY)
             # Bilateral filter to remove noise while preserving edges
             denoised = cv2.bilateralFilter(gray, 11, 17, 17)
             # Adaptive threshold for high contrast plate characters
@@ -128,8 +149,7 @@ class ANPRProcessor:
                 tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
                 text = "".join(t for t, _ in tokens)
                 confidence = sum(c for _, c in tokens) / (100 * len(tokens)) if tokens else 0.0
-                # This function receives a crop; no plate detector confidence was measured.
-                return text, 0.0, confidence
+                return text, detection_confidence, confidence
             except Exception:
                 pass
         except Exception:
