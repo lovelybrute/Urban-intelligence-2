@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from app.services.road_detector import detect_road_defects
 from app.services.vision_detector import detect_scene, model_health
@@ -28,7 +29,7 @@ async def detect_road(file: UploadFile = File(...), confidence: float = 0.25):
         raise HTTPException(status_code=400, detail="Confidence must be between 0.01 and 1.0")
     raw = await _read_image(file)
     try:
-        detections = detect_road_defects(raw, confidence=confidence)
+        detections = await run_in_threadpool(detect_road_defects, raw, confidence)
     except ValueError:
         raise HTTPException(status_code=422, detail="Upload a valid image")
     except (FileNotFoundError, RuntimeError) as exc:
@@ -39,7 +40,7 @@ async def detect_road(file: UploadFile = File(...), confidence: float = 0.25):
 async def detect_traffic_scene(file: UploadFile = File(...), confidence: float = 0.25):
     raw = await _read_image(file)
     try:
-        return detect_scene(raw, confidence=confidence)
+        return await run_in_threadpool(detect_scene, raw, confidence)
     except ValueError:
         raise HTTPException(status_code=422, detail="Upload a valid image")
     except RuntimeError as exc:
@@ -56,7 +57,7 @@ async def detect_video_events(file: UploadFile = File(...), confidence: float = 
     if len(raw) > 25 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Video exceeds 25 MB")
     try:
-        return analyse_video(raw, confidence=confidence)
+        return await run_in_threadpool(analyse_video, raw, confidence)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
@@ -67,7 +68,7 @@ async def detect_video_events(file: UploadFile = File(...), confidence: float = 
 async def detect_number_plate(file: UploadFile = File(...), confidence: float = 0.25):
     raw = await _read_image(file)
     try:
-        return recognize_plate(raw, confidence=confidence)
+        return await run_in_threadpool(recognize_plate, raw, confidence)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
@@ -78,7 +79,7 @@ async def detect_number_plate(file: UploadFile = File(...), confidence: float = 
 async def detect_road_infrastructure(file: UploadFile = File(...), confidence: float = 0.25):
     raw = await _read_image(file)
     try:
-        return detect_infrastructure(raw, confidence=confidence)
+        return await run_in_threadpool(detect_infrastructure, raw, confidence)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
