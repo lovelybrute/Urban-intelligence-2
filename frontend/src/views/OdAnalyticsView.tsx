@@ -1,29 +1,94 @@
-import React from 'react';
-import { Route as RouteIcon, ArrowRight, Clock, Activity } from 'lucide-react';
-import { Route } from '../types';
-
-interface Props { routes: Route[]; }
-
-export const OdAnalyticsView: React.FC<Props> = ({ routes }) => {
-  const flows = routes.map((r, i) => {
-    const [origin, destination] = r.name.split(' - ');
-    const observations = 420 + (i * 173);
-    const avgMinutes = Math.max(8, Math.round(r.expected_duration_minutes * (0.78 + i * 0.06)));
-    return { origin, destination, observations, avgMinutes, route: r.route_number };
-  });
-  return <div style={{display:'flex',flexDirection:'column',gap:20}}>
-    <div><h2 className="heading-md">Origin–Destination Intelligence</h2><p style={{color:'var(--text-secondary)',fontSize:'.875rem'}}>Fleet-derived corridor flows for SIH26124. Demo values are explicitly simulated until production mobility observations are connected.</p></div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12}}>
-      <div className="panel" style={{padding:16}}><RouteIcon size={18}/><b style={{display:'block',fontSize:'1.4rem'}}>{flows.length}</b><span>Observed OD corridors</span></div>
-      <div className="panel" style={{padding:16}}><Activity size={18}/><b style={{display:'block',fontSize:'1.4rem'}}>{flows.reduce((s,f)=>s+f.observations,0).toLocaleString()}</b><span>Demo observations</span></div>
-      <div className="panel" style={{padding:16}}><Clock size={18}/><b style={{display:'block',fontSize:'1.4rem'}}>{Math.round(flows.reduce((s,f)=>s+f.avgMinutes,0)/Math.max(flows.length,1))} min</b><span>Mean corridor time</span></div>
+import { ArrowRight, Route as RouteIcon } from "lucide-react";
+import type { Route } from "../types";
+import { DEMO_MODE } from "../services/api";
+import { useRemoteData } from "../hooks/useRemoteData";
+import { AnalyticsState } from "../components/AnalyticsState";
+export interface Corridor {
+  route_id: number;
+  route_number: string;
+  route_name: string;
+  origin: string;
+  destination: string;
+  observations: number;
+  average_minutes: number | null;
+  expected_minutes: number;
+  delay_minutes: number | null;
+  simulated_journeys: number;
+}
+export const OdAnalyticsView = ({ routes }: { routes: Route[] }) => {
+  const remote = useRemoteData<Corridor[]>("/analytics/corridor-journeys");
+  const data: Corridor[] = DEMO_MODE
+    ? routes.map((r) => ({
+        route_id: r.id,
+        route_number: r.route_number,
+        route_name: r.name,
+        origin: r.name.split(" - ")[0],
+        destination: r.name.split(" - ")[1] || "Not set",
+        observations: 0,
+        average_minutes: null,
+        expected_minutes: r.expected_duration_minutes,
+        delay_minutes: null,
+        simulated_journeys: 0,
+      }))
+    : remote.data || [];
+  return (
+    <div className="analytics-page">
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">PLANNING / CORRIDOR MOVEMENT</div>
+          <h1>
+            Where journeys connect<span>.</span>
+          </h1>
+          <p>
+            Bus corridor origin–destination observations from GPS endpoint
+            crossings.
+          </p>
+        </div>
+        <RouteIcon size={28} />
+      </div>
+      <div className="inline-notice">
+        This measures bus journeys, not city-wide passenger or private-vehicle
+        demand. A completed journey requires sightings near both route
+        endpoints.
+      </div>
+      <AnalyticsState {...remote} />
+      <div className="journey-grid">
+        {data.map((r) => (
+          <article className="panel journey-card" key={r.route_id}>
+            <header>
+              <span className="badge badge-accent">{r.route_number}</span>
+              <span>{r.observations} completed journeys</span>
+            </header>
+            <div className="journey-endpoints">
+              <h2>{r.origin}</h2>
+              <ArrowRight size={20} />
+              <h2>{r.destination}</h2>
+            </div>
+            <footer>
+              <div>
+                <small>Observed average</small>
+                <strong>
+                  {r.average_minutes === null
+                    ? "Awaiting GPS trips"
+                    : `${r.average_minutes} min`}
+                </strong>
+              </div>
+              <div>
+                <small>Scheduled</small>
+                <strong>{r.expected_minutes} min</strong>
+              </div>
+            </footer>
+            {r.simulated_journeys > 0 && (
+              <small>
+                {r.simulated_journeys} journeys include simulated GPS
+              </small>
+            )}
+          </article>
+        ))}
+      </div>
+      {!data.length && !remote.loading && (
+        <p className="empty-copy">No active corridors are available.</p>
+      )}
     </div>
-    <div className="panel" style={{padding:16}}>
-      <h3 className="heading-sm" style={{marginBottom:12}}>OD Flow Matrix</h3>
-      <div className="table-container"><table style={{width:'100%',borderCollapse:'collapse',fontSize:'.8125rem'}}><thead><tr><th>Route</th><th>Origin</th><th></th><th>Destination</th><th>Observations</th><th>Avg time</th></tr></thead><tbody>
-      {flows.map(f=><tr key={f.route} style={{borderTop:'1px solid var(--border-subtle)'}}><td style={{padding:12}}><span className="badge badge-accent">{f.route}</span></td><td>{f.origin}</td><td><ArrowRight size={14}/></td><td>{f.destination}</td><td className="mono">{f.observations}</td><td className="mono">{f.avgMinutes} min</td></tr>)}
-      </tbody></table></div>
-    </div>
-  </div>;
+  );
 };
-export default OdAnalyticsView;

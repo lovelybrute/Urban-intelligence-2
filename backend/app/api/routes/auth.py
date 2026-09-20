@@ -46,7 +46,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=UserResponse, dependencies=[Depends(require_admin)])
 async def register(request: UserCreate, db: AsyncSession = Depends(get_db)):
     """Register a new user (admin only in production)."""
     # Check if username exists
@@ -80,8 +80,8 @@ async def get_me(
     """Get current user profile."""
     result = await db.execute(select(User).where(User.id == int(current_user["sub"])))
     user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Account unavailable")
     return user
 
 
@@ -94,8 +94,8 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
 
     result = await db.execute(select(User).where(User.id == int(payload["sub"])))
     user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Account unavailable")
 
     token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
     new_access = create_access_token(token_data)

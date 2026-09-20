@@ -67,7 +67,7 @@ async def update_alert(
     if update.resolution_notes:
         alert.resolution_notes = update.resolution_notes
 
-    return {"status": "updated", "alert_id": alert.id}
+    return {"status": "updated", "alert_id": alert.id, "persisted": True}
 
 
 @alerts_router.get("/stats")
@@ -382,3 +382,19 @@ async def health_check(db: AsyncSession = Depends(get_db)):
             api_version="1.0.0",
             uptime="running",
         )
+
+@analytics_router.get("/corridor-journeys")
+async def get_corridor_journeys(hours: int = Query(default=24, ge=1, le=168), db: AsyncSession = Depends(get_db)):
+    from app.services.mobility import corridor_journeys
+    return await corridor_journeys(db, hours)
+
+@system_router.get("/models")
+async def model_readiness():
+    from pathlib import Path
+    from app.core.config import settings
+    return [{"name": name, "artifact_present": Path(path).is_file(),
+             "status": "Artifact present; inference and accuracy unverified" if Path(path).is_file() else "MODEL NOT TRAINED / ARTIFACT NOT CONFIGURED",
+             "validation": None, "scope": "Central server filesystem; onboard devices may differ"}
+            for name, path in [("Road defect detector", settings.ROAD_DEFECT_MODEL_PATH),
+                               ("Traffic / person detector", settings.YOLO_MODEL_PATH),
+                               ("Plate detector", settings.ANPR_MODEL_PATH)]]

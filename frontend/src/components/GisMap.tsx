@@ -1,10 +1,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Bus, Route, UrbanEvent } from "../types";
+import { Bus, Route, UrbanEvent, RoadSegment } from "../types";
 import { Layers } from "lucide-react";
 
+const escapeHtml = (value: unknown) =>
+  String(value ?? "").replace(
+    /[&<>"']/g,
+    (char) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        char
+      ]!,
+  );
+
 interface GisMapProps {
+  initialHeatmap?: boolean;
+  roadSegments?: RoadSegment[];
   buses: Bus[];
   routes: Route[];
   events: UrbanEvent[];
@@ -20,12 +31,17 @@ export const GisMap: React.FC<GisMapProps> = ({
   onSelectEvent,
   selectedEventId,
   height = "calc(100vh - 140px)",
+  initialHeatmap = false,
+  roadSegments = [],
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const routesLayerRef = useRef<L.LayerGroup | null>(null);
 
+  const [showHeatmap, setShowHeatmap] = useState(initialHeatmap);
+  const [showRoads, setShowRoads] = useState(false);
+  const [tileError, setTileError] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
 
   // Layer filter toggles
@@ -56,7 +72,10 @@ export const GisMap: React.FC<GisMapProps> = ({
         maxZoom: 19,
         subdomains: "abcd",
       },
-    ).addTo(map);
+    )
+      .on("tileerror", () => setTileError(true))
+      .on("tileload", () => setTileError(false))
+      .addTo(map);
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
@@ -72,6 +91,82 @@ export const GisMap: React.FC<GisMapProps> = ({
       mapInstanceRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const layer = L.layerGroup().addTo(mapInstanceRef.current);
+    if (showHeatmap) {
+      const cells = new Map<
+        string,
+        { lat: number; lng: number; intensity: number; count: number }
+      >();
+      events
+        .filter((e) => e.event_type === "congestion")
+        .forEach((e) => {
+          const lat = Math.floor(e.latitude / 0.005) * 0.005,
+            lng = Math.floor(e.longitude / 0.005) * 0.005;
+          const key = `${lat},${lng}`,
+            old = cells.get(key);
+          const intensity = { low: 0.25, medium: 0.5, high: 0.75, critical: 1 }[
+            e.severity
+          ];
+          cells.set(key, {
+            lat,
+            lng,
+            intensity: Math.max(intensity, old?.intensity || 0),
+            count: (old?.count || 0) + 1,
+          });
+        });
+      cells.forEach((cell) =>
+        L.rectangle(
+          [
+            [cell.lat, cell.lng],
+            [cell.lat + 0.005, cell.lng + 0.005],
+          ],
+          {
+            stroke: false,
+            fillColor:
+              cell.intensity > 0.7
+                ? "#f97373"
+                : cell.intensity > 0.4
+                  ? "#f7b955"
+                  : "#57d4be",
+            fillOpacity: 0.45,
+          },
+        )
+          .bindTooltip(
+            `${cell.count} observations · maximum severity intensity ${cell.intensity}`,
+          )
+          .addTo(layer),
+      );
+    }
+    if (showRoads)
+      roadSegments.forEach((road) =>
+        L.polyline(
+          [
+            [road.start_latitude, road.start_longitude],
+            [road.end_latitude, road.end_longitude],
+          ],
+          {
+            color: {
+              good: "#57d4be",
+              fair: "#e7cf68",
+              poor: "#f7a15a",
+              critical: "#f97373",
+            }[road.condition],
+            weight: 7,
+            opacity: 0.8,
+          },
+        )
+          .bindTooltip(
+            `${escapeHtml(road.road_name)} · ${escapeHtml(road.condition)} · ${road.condition_score}/100`,
+          )
+          .addTo(layer),
+      );
+    return () => {
+      layer.remove();
+    };
+  }, [events, showHeatmap, roadSegments, showRoads]);
 
   // Update Route Polylines
   useEffect(() => {
@@ -90,10 +185,13 @@ export const GisMap: React.FC<GisMapProps> = ({
           dashArray: "6, 8",
         });
 
-        polyline.bindTooltip(`<b>${rt.route_number}:</b> ${rt.name}`, {
-          sticky: true,
-          className: "panel",
-        });
+        polyline.bindTooltip(
+          `<b>${escapeHtml(rt.route_number)}:</b> ${escapeHtml(rt.name)}`,
+          {
+            sticky: true,
+            className: "panel",
+          },
+        );
 
         polyline.addTo(routesLayerRef.current!);
       });
@@ -143,7 +241,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               border: 1px solid rgba(255,255,255,0.1);
               box-shadow: 0 2px 6px rgba(0,0,0,0.4);
             ">
-              ${bus.bus_number}
+              ${escapeHtml(bus.bus_number)}
             </div>
           `,
           iconSize: [30, 30],
@@ -155,13 +253,13 @@ export const GisMap: React.FC<GisMapProps> = ({
         });
         marker.bindPopup(`
           <div style="padding: 6px; font-family: Inter, system-ui, sans-serif;">
-            <div style="font-weight: 700; color: #2563eb; font-size: 13px;">${bus.bus_number}</div>
-            <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 6px;">${bus.route_name || "Active Corridor"}</div>
+            <div style="font-weight: 700; color: #2563eb; font-size: 13px;">${escapeHtml(bus.bus_number)}</div>
+            <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 6px;">${escapeHtml(bus.route_name || "Active Corridor")}</div>
             <div style="font-size: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
               <div>Speed: <b>${bus.speed} km/h</b></div>
               <div>Edge FPS: <b style="color:#22c55e;">${bus.edge_fps ?? "Unavailable"}</b></div>
               <div>Cams: <b>${bus.active_cameras ?? "Unavailable"} HD</b></div>
-              <div>Load: <b>${bus.passenger_load_pct || 60}%</b></div>
+              <div>Load: <b>${bus.passenger_load_pct !== undefined ? `${bus.passenger_load_pct}%` : "Unavailable"}</b></div>
             </div>
           </div>
         `);
@@ -182,6 +280,12 @@ export const GisMap: React.FC<GisMapProps> = ({
           "damaged_road",
           "damaged_divider",
           "missing_sign",
+          "missing_divider",
+          "missing_zebra",
+          "damaged_zebra",
+          "damaged_sign",
+          "debris",
+          "road_hazard",
         ].includes(evt.event_type)
       ) {
         isVisible = showDefects;
@@ -250,8 +354,8 @@ export const GisMap: React.FC<GisMapProps> = ({
       marker.bindTooltip(
         `
         <div style="font-size: 11px; padding: 2px; font-family: Inter, system-ui, sans-serif;">
-          <b style="color:${markerColor}; text-transform:capitalize;">${evt.event_type.replace(/_/g, " ")}</b> (${Math.round(evt.confidence * 100)}%)
-          <br/><span style="color:#a1a1aa;">${evt.description.slice(0, 50)}...</span>
+          <b style="color:${markerColor}; text-transform:capitalize;">${escapeHtml(evt.event_type.replace(/_/g, " "))}</b> (${Math.round(evt.confidence * 100)}%)
+          <br/><span style="color:#a1a1aa;">${escapeHtml(evt.description.slice(0, 50))}...</span>
         </div>
       `,
         { sticky: true },
@@ -285,6 +389,11 @@ export const GisMap: React.FC<GisMapProps> = ({
       {/* Map Container */}
       <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
 
+      {tileError && (
+        <div className="map-warning" role="status">
+          Base map unavailable. Observations are still shown.
+        </div>
+      )}
       {/* Floating Layer Controls */}
       <div
         className="panel map-layer-controls"
@@ -319,6 +428,24 @@ export const GisMap: React.FC<GisMapProps> = ({
         </button>
         {layersOpen && (
           <div style={{ display: "grid", gap: 8 }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={showHeatmap}
+                onChange={(e) => setShowHeatmap(e.target.checked)}
+              />{" "}
+              Congestion heat layer
+            </label>
+            {!!roadSegments.length && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showRoads}
+                  onChange={(e) => setShowRoads(e.target.checked)}
+                />{" "}
+                Road condition layer
+              </label>
+            )}
             <label
               style={{
                 display: "flex",

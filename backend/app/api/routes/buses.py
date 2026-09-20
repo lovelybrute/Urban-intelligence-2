@@ -109,6 +109,7 @@ async def update_telemetry(
         speed=telemetry.speed,
         heading=telemetry.heading,
         is_simulated=telemetry.is_simulated,
+        timestamp=telemetry.timestamp or datetime.now(timezone.utc),
     )
     db.add(gps)
 

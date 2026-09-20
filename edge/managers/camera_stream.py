@@ -80,13 +80,15 @@ class MultiCameraManager:
             else:
                 # If looped video file, rewind
                 if cfg.source_type == "file":
-                    cap.set(0, 0)
+                    cap.set(1, 0)
                     ret, frame = cap.read()
                     return ret, frame
                 return False, None
 
-        # Synthetic frame generator
-        return True, self._generate_synthetic_frame(cfg)
+        if cfg.source_type == "synthetic":
+            frame = self._generate_synthetic_frame(cfg)
+            return frame is not None, frame
+        return False, None
 
     def _generate_synthetic_frame(self, cfg: CameraConfig) -> Any:
         """
@@ -111,7 +113,8 @@ class MultiCameraManager:
             status[cam_id] = {
                 "position": cfg.position,
                 "source": cfg.source_type,
-                "fps": cfg.target_fps,
-                "online": True
+                "target_fps": cfg.target_fps,
+                "online": cfg.source_type == "synthetic" or (cam_id in self.captures and self.captures[cam_id].isOpened()),
+                "is_simulated": cfg.source_type == "synthetic"
             }
         return status

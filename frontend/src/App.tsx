@@ -3,6 +3,7 @@ import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { GisMap } from "./components/GisMap";
 import { EventModal } from "./components/EventModal";
+import { LoginView } from "./views/LoginView";
 import { LandingPage } from "./views/LandingPage";
 
 // Views
@@ -21,6 +22,9 @@ import { InfrastructureView } from "./views/InfrastructureView";
 
 import {
   apiClient,
+  isAuthenticated,
+  logout,
+  switchMode,
   DEMO_MODE,
   MOCK_BUSES,
   MOCK_ROUTES,
@@ -74,6 +78,14 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(getInitialTab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
+
+  const [authenticated, setAuthenticated] = useState(isAuthenticated);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  useEffect(() => {
+    const update = () => setAuthenticated(isAuthenticated());
+    window.addEventListener("urban-auth-change", update);
+    return () => window.removeEventListener("urban-auth-change", update);
+  }, []);
 
   // Data state
   const [loadError, setLoadError] = useState("");
@@ -143,8 +155,9 @@ export const App: React.FC = () => {
   };
 
   // Initial data fetch
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (background = false) => {
+    if (!DEMO_MODE && !isAuthenticated()) return;
+    if (!background) setLoading(true);
     setLoadError("");
     try {
       const [b, r, e, a, roads, maint] = await Promise.all([
@@ -161,6 +174,9 @@ export const App: React.FC = () => {
       setAlerts(a);
       setRoadSegments(roads);
       setMaintenanceQueue(maint);
+      setLastUpdated(
+        new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
+      );
       setLoadError("");
     } catch {
       setLoadError(
@@ -172,8 +188,13 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (DEMO_MODE || authenticated) loadData();
+    if (DEMO_MODE || !authenticated) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) loadData(true);
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [loadData, authenticated]);
 
   // Live simulation ticker: updates bus GPS coordinates smoothly along their routes
   useEffect(() => {
@@ -311,6 +332,8 @@ export const App: React.FC = () => {
     );
   }
 
+  if (!DEMO_MODE && !authenticated) return <LoginView />;
+
   const activeCriticalAlerts = alerts.filter(
     (a) => a.status === "active" && a.category === "critical",
   ).length;
@@ -335,7 +358,12 @@ export const App: React.FC = () => {
                 ? "BACKEND MODE · Loading telemetry…"
                 : "BACKEND MODE · Latest retrieved telemetry."}
         </span>
-        <button onClick={navigateToLanding}>About the prototype ↗</button>
+        <div className="mode-actions">
+          <button onClick={switchMode}>
+            {DEMO_MODE ? "Connect backend" : "Switch to demo"}
+          </button>
+          {!DEMO_MODE && <button onClick={logout}>Sign out</button>}
+        </div>
       </div>
 
       {/* Load error notification */}
@@ -360,7 +388,7 @@ export const App: React.FC = () => {
             <span>{loadError}</span>
           </div>
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             className="btn btn-secondary"
             style={{ fontSize: "0.75rem", padding: "4px 10px", gap: "4px" }}
           >
@@ -397,6 +425,18 @@ export const App: React.FC = () => {
 
         {/* View Content Area */}
         <main className="workspace-main" id="main-content">
+          {!DEMO_MODE && (
+            <div className="sync-toolbar">
+              <span>
+                {lastUpdated
+                  ? `Last retrieved ${lastUpdated} IST · Refreshes every 15 s`
+                  : "Awaiting telemetry"}
+              </span>
+              <button className="btn btn-ghost" onClick={() => loadData(true)}>
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </div>
+          )}
           {loading && (
             <div
               style={{
@@ -423,7 +463,7 @@ export const App: React.FC = () => {
           )}
 
           {!loading && (
-            <>
+            <div key={activeTab} className="route-transition">
               {activeTab === "overview" && (
                 <OverviewView
                   buses={buses}
@@ -454,6 +494,7 @@ export const App: React.FC = () => {
                     </span>
                   </div>
                   <GisMap
+                    roadSegments={roadSegments}
                     buses={buses}
                     routes={routes}
                     events={events}
@@ -476,7 +517,9 @@ export const App: React.FC = () => {
                 />
               )}
 
-              {activeTab === "traffic" && <TrafficView events={events} />}
+              {activeTab === "traffic" && (
+                <TrafficView events={events} buses={buses} routes={routes} />
+              )}
 
               {activeTab === "safety" && (
                 <SafetyView
@@ -493,7 +536,16 @@ export const App: React.FC = () => {
                 />
               )}
 
-              {activeTab === "alerts" && <AlertsView alerts={alerts} />}
+              {activeTab === "alerts" && (
+                <AlertsView
+                  alerts={alerts}
+                  onUpdate={(id, status) =>
+                    setAlerts((previous) =>
+                      previous.map((a) => (a.id === id ? { ...a, status } : a)),
+                    )
+                  }
+                />
+              )}
 
               {activeTab === "routes" && <RoutesView routes={routes} />}
 
@@ -516,8 +568,8 @@ export const App: React.FC = () => {
                 />
               )}
 
-              {activeTab === "mlops" && <MlOpsView />}
-            </>
+              {activeTab === "mlops" && <MlOpsView buses={buses} />}
+            </div>
           )}
         </main>
       </div>

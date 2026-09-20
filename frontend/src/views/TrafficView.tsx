@@ -1,142 +1,160 @@
-import React from 'react';
-import { UrbanEvent } from '../types';
-import { Car, Activity } from 'lucide-react';
-
-interface TrafficViewProps {
-  events: UrbanEvent[];
+import { Car, Gauge, Layers, ArrowUpRight } from "lucide-react";
+import type { UrbanEvent, Bus, Route } from "../types";
+import { GisMap } from "../components/GisMap";
+import { DEMO_MODE } from "../services/api";
+import { useRemoteData } from "../hooks/useRemoteData";
+import { AnalyticsState } from "../components/AnalyticsState";
+interface TrafficStats {
+  total_observations: number;
+  total_vehicles_counted: number;
+  vehicle_composition: Record<string, number>;
+  average_speed_kmh: number | null;
 }
-
-export const TrafficView: React.FC<TrafficViewProps> = ({ events }) => {
-  const congestionEvents = events.filter(e => e.event_type === 'congestion');
-
-  const vehicleComposition = [
-    { label: 'Auto-Rickshaws', count: 34, pct: 36, color: '#f59e0b' },
-    { label: 'Two-Wheelers', count: 28, pct: 30, color: '#2563eb' },
-    { label: 'Cars & Cabs', count: 20, pct: 21, color: '#8b5cf6' },
-    { label: 'Buses & Commercial', count: 12, pct: 13, color: '#ec4899' },
-  ];
-
+export const TrafficView = ({
+  events,
+  buses,
+  routes,
+}: {
+  events: UrbanEvent[];
+  buses: Bus[];
+  routes: Route[];
+}) => {
+  const remote = useRemoteData<TrafficStats>("/traffic/stats");
+  const congestion = events.filter((e) => e.event_type === "congestion");
+  const demoBreakdown = congestion.reduce<Record<string, number>>((all, e) => {
+    for (const [kind, value] of Object.entries(
+      e.extra_metadata?.vehicle_breakdown || {},
+    ))
+      if (typeof value === "number") all[kind] = (all[kind] || 0) + value;
+    return all;
+  }, {});
+  const stats = DEMO_MODE
+    ? {
+        total_observations: congestion.length,
+        total_vehicles_counted: congestion.reduce(
+          (n, e) => n + (e.extra_metadata?.vehicle_count || 0),
+          0,
+        ),
+        vehicle_composition: demoBreakdown,
+        average_speed_kmh: null,
+      }
+    : remote.data;
+  const total = Object.values(stats?.vehicle_composition || {}).reduce(
+    (a, b) => a + b,
+    0,
+  );
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div>
-        <h2 className="heading-md" style={{ marginBottom: '4px' }}>Traffic Flow & Congestion Intelligence</h2>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-          Real-time vehicle detection, modal classification, flow density, and transit bottleneck discovery.
-        </p>
+    <div className="analytics-page">
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">CITY INTELLIGENCE / MOBILITY</div>
+          <h1>
+            Traffic, in perspective<span>.</span>
+          </h1>
+          <p>Vehicle observations and spatial congestion patterns.</p>
+        </div>
+        <span className="badge badge-accent">
+          {DEMO_MODE ? "Sample observations" : "Last 24 hours"}
+        </span>
       </div>
-
-      {/* Top Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-        <div className="panel" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px' }}>
-            ACTIVE BOTTLENECK CORRIDORS
-          </div>
-          <div className="mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--severity-high)' }}>
-            {congestionEvents.length} Zones
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Mehdipatnam & Ameerpet</div>
-        </div>
-
-        <div className="panel" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px' }}>
-            CORRIDOR VELOCITY (DEMO EST.)
-          </div>
-          <div className="mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>19.4 km/h</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--severity-critical)', marginTop: '4px' }}>-38% vs route design speed</div>
-        </div>
-
-        <div className="panel" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px' }}>
-            TRANSIT FLOW RATE (DEMO EST.)
-          </div>
-          <div className="mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--accent-text)' }}>64 veh/min</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>Peak Evening Transit Period</div>
-        </div>
-
-        <div className="panel" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px' }}>
-            ESTIMATED TRANSIT DELAY
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px' }}>
-            <span className="mono" style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--severity-high)' }}>+14</span>
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>minutes</span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Affecting Routes R4 & R5</div>
-        </div>
+      <AnalyticsState {...remote} />
+      <div className="summary-grid">
+        <article className="insight-tile">
+          <Car />
+          <span>Vehicle sightings</span>
+          <strong>{stats?.total_vehicles_counted ?? "—"}</strong>
+          <small>Across observations; not unique vehicles</small>
+        </article>
+        <article className="insight-tile">
+          <Layers />
+          <span>Traffic observations</span>
+          <strong>{stats?.total_observations ?? "—"}</strong>
+          <small>Repeated camera samples included</small>
+        </article>
+        <article className="insight-tile">
+          <Gauge />
+          <span>Reported average speed</span>
+          <strong>
+            {stats?.average_speed_kmh != null
+              ? `${stats.average_speed_kmh} km/h`
+              : "—"}
+          </strong>
+          <small>Unavailable without speed measurements</small>
+        </article>
       </div>
-
-      {/* Grid: Vehicle Composition + Identified Bottlenecks */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '16px' }} className="responsive-2col">
-        {/* Left: Vehicle Composition */}
-        <div className="panel" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Car size={16} color="var(--accent-text)" />
-              <span>Vehicle Modal Composition</span>
-            </h3>
-            <span className="badge badge-neutral" style={{ fontSize: '0.65rem' }}>Sample Aggregation</span>
+      <section className="panel analytics-map">
+        <div className="section-heading">
+          <div>
+            <h2>Congestion intensity</h2>
+            <span>Intensity represents recorded congestion severity</span>
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {vehicleComposition.map((v, i) => (
-              <div key={i}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '6px' }}>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{v.label}</span>
-                  <span className="mono" style={{ color: v.color, fontWeight: 600 }}>{v.pct}% ({v.count} tracked)</span>
+          <span className="badge badge-high">Spatial observations</span>
+        </div>
+        <GisMap
+          buses={buses}
+          routes={routes}
+          events={events}
+          onSelectEvent={() => {}}
+          height="430px"
+          initialHeatmap
+        />
+      </section>
+      <div className="analytics-columns">
+        <section className="panel analytics-section">
+          <div className="section-heading">
+            <h2>Vehicle composition</h2>
+            <Car size={19} />
+          </div>
+          {Object.entries(stats?.vehicle_composition || {}).map(
+            ([name, count], index) => (
+              <div className="composition-row" key={name}>
+                <div>
+                  <span>{name.replaceAll("_", " ")}</span>
+                  <strong>{count}</strong>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${v.pct}%`, height: '100%', background: v.color }} />
+                <div className="composition-track">
+                  <span
+                    style={{
+                      width: `${total ? (count / total) * 100 : 0}%`,
+                      background: ["#70dec5", "#7e9eff", "#eab975", "#b1a0f1"][
+                        index % 4
+                      ],
+                    }}
+                  />
                 </div>
               </div>
-            ))}
+            ),
+          )}
+          {!total && (
+            <p className="empty-copy">
+              No class breakdown has been recorded. Counts appear when the
+              detector supplies vehicle classes.
+            </p>
+          )}
+        </section>
+        <section className="panel analytics-section">
+          <div className="section-heading">
+            <h2>Latest congestion observations</h2>
+            <ArrowUpRight size={18} />
           </div>
-
-          <div style={{ marginTop: '24px', padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-subtle)', fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Vehicle tracking executes onboard via ByteTrack. Transmits only aggregated density and flow counts — zero individual citizen vehicle paths are tracked or stored.
-          </div>
-        </div>
-
-        {/* Right: Bottleneck Hotspots */}
-        <div className="panel" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Activity size={16} color="var(--severity-high)" />
-              <span>Identified Bottleneck Corridors</span>
-            </h3>
-            <span className="badge badge-high" style={{ fontSize: '0.65rem' }}>Live Alerting</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {congestionEvents.map((evt) => (
-              <div
-                key={evt.id}
-                style={{
-                  padding: '14px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--severity-high)', fontSize: '0.875rem' }}>
-                    Mehdipatnam Junction Arterial
-                  </span>
-                  <span className="badge badge-high" style={{ fontSize: '0.65rem' }}>Severe Slowdown</span>
-                </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '10px', lineHeight: 1.4 }}>
-                  {evt.description}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  <span>Velocity: <b style={{ color: 'var(--severity-critical)' }}>8.4 km/h</b></span>
-                  <span>Lane Density: <b style={{ color: 'var(--accent-text)' }}>88%</b></span>
-                  <span>Affected Routes: <b style={{ color: 'var(--text-primary)' }}>R4, R5</b></span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+          {congestion.slice(0, 5).map((e) => (
+            <article className="observation-row" key={e.id}>
+              <span className={`badge badge-${e.severity}`}>{e.severity}</span>
+              <p>{e.description}</p>
+              <small>
+                Bus {e.bus_id} · {e.latitude.toFixed(4)},{" "}
+                {e.longitude.toFixed(4)}
+                {e.is_simulated ? " · Simulated" : ""}
+              </small>
+            </article>
+          ))}
+          {!congestion.length && (
+            <p className="empty-copy">
+              No congestion events in the current feed.
+            </p>
+          )}
+        </section>
       </div>
     </div>
   );
 };
-export default TrafficView;

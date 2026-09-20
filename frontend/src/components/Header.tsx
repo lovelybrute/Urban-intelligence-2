@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Layers, MapPin, Menu, Play, Bell, ChevronDown } from "lucide-react";
+import { MotionToggle } from "./Motion";
 import { DEMO_MODE } from "../services/api";
 interface HeaderProps {
   activeTab: string;
@@ -77,6 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
         <MapPin size={15} /> Hyderabad <span>/</span> Central operations
       </span>
       <div className="header-actions">
+        <MotionToggle />
         <button
           className="notification-button"
           onClick={() => setActiveTab("alerts")}

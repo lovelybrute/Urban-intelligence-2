@@ -85,6 +85,9 @@ class RoadDefectProcessor:
                     cls_id = int(box.cls[0])
                     conf = float(box.conf[0])
                     defect_name = self.model.names.get(cls_id, "road_hazard")
+                    defect_name = {"D00": "crack", "D10": "crack", "D20": "crack", "D40": "pothole"}.get(defect_name, defect_name)
+                    if defect_name not in self.DEFECT_TYPES:
+                        continue
                     coords = box.xyxyn[0].tolist()
                     severity = self._compute_severity(defect_name, conf, coords)
                     area = self._estimate_area(coords)
@@ -144,13 +147,14 @@ class RoadDefectProcessor:
                                 detection_id=f"cv_{uuid.uuid4().hex[:8]}",
                                 defect_type="pothole",
                                 severity="high" if area > 5000 else "medium",
-                                confidence=round(conf, 2),
+                                confidence=0.0,
+                                metadata={"method": "opencv_heuristic", "confidence_calibrated": False, "heuristic_score": round(conf, 2)},
                                 bbox=[real_y, real_x, real_y + real_h, real_x + real_w],
                                 area_sq_meters=round(area * 0.0001, 2),
                                 explainability=[
                                     f"High-contrast depression contour detected on road plane",
                                     f"Estimated surface disruption area: {round(area * 0.0001, 2)} m²",
-                                    f"Confidence score: {int(conf * 100)}%"
+                                    "Uncalibrated visual candidate; manual review required"
                                 ]
                             )
                             detections.append(det)

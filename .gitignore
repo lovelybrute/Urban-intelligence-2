@@ -72,3 +72,6 @@ tmp/
 temp/
 scratch/
 backend/.venv312/
+# Local video processing output and queue
+edge_output/
+edge_event_cache.json

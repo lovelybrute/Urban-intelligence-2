@@ -5,7 +5,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
+from sqlalchemy import select
+from app.db.session import get_db
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
 
@@ -60,7 +62,7 @@ def decode_token(token: str) -> Dict[str, Any]:
         )
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db=Depends(get_db)) -> Dict[str, Any]:
     """Dependency to get the current authenticated user from JWT."""
     payload = decode_token(credentials.credentials)
     if payload.get("type") != "access":
@@ -68,7 +70,23 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
         )
+    from app.models.models import User
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid user")
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Account unavailable")
+    payload["role"] = user.role.value
     return payload
+
+
+async def require_write(request: Request, user=Depends(get_current_user)):
+    if request.method not in {"GET", "HEAD", "OPTIONS"} and user.get("role") not in {
+        "admin", "command_center", "transport_authority", "road_maintenance"
+    }:
+        raise HTTPException(status_code=403, detail="This account has read-only access")
 
 
 class RoleChecker:

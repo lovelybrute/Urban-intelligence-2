@@ -1,3 +1,4 @@
+import { AnimatedNumber } from "../components/Motion";
 import React, { useState } from "react";
 import type { Bus, UrbanEvent, Alert, RoadSegment, Route } from "../types";
 import {
@@ -114,6 +115,30 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           Incident reports <ArrowUpRight size={16} />
         </button>
       </div>
+      <div className="priority-banner">
+        <div className="priority-icon">
+          <ShieldAlert size={24} />
+        </div>
+        <div>
+          <span className="eyebrow">OPERATOR BRIEFING</span>
+          <h2>
+            {critical
+              ? `${critical} critical alerts need attention`
+              : "Your city overview is ready"}
+          </h2>
+          <p>
+            {critical
+              ? "Review the evidence queue and coordinate the next action."
+              : "Explore fleet observations, road conditions, and the latest detections."}
+          </p>
+        </div>
+        <button
+          className="btn btn-secondary"
+          onClick={() => setActiveTab("alerts")}
+        >
+          Review alerts <ArrowUpRight size={16} />
+        </button>
+      </div>
       <div className="metric-grid">
         {metrics.map((m) => (
           <button
@@ -125,7 +150,9 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               <span>{m.label}</span>
               <m.icon size={19} />
             </div>
-            <strong>{m.value}</strong>
+            <strong>
+              <AnimatedNumber value={m.value} />
+            </strong>
             <div className="metric-bottom">
               <span>{m.detail}</span>
               <ArrowUpRight size={15} />
@@ -150,6 +177,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             </button>
           </div>
           <GisMap
+            roadSegments={roadSegments}
             buses={buses}
             routes={routes}
             events={events}

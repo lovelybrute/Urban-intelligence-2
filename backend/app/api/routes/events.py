@@ -10,7 +10,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from app.db.session import get_db
 from app.models.models import (
-    Event, EventCluster, RoadDefect, Alert,
+    Event, EventCluster, RoadDefect, Alert, Bus, Camera, TrafficObservation, CongestionLevel,
     EventType, Severity, EventStatus, AlertCategory, AlertStatus
 )
 from app.schemas.schemas import EventCreate, EventResponse, EventUpdate
@@ -56,16 +56,14 @@ async def find_or_create_cluster(db: AsyncSession, event: Event) -> Optional[int
             # Update existing cluster
             cluster.observation_count += 1
             cluster.last_observed = datetime.now(timezone.utc)
-            # Increase confidence with repeated observations
-            cluster.aggregate_confidence = min(
-                0.99,
-                cluster.aggregate_confidence + (1 - cluster.aggregate_confidence) * 0.1
-            )
+            # Repetition is not independent model validation. Retain the strongest
+            # supplied detector score without inventing corroboration confidence.
+            cluster.aggregate_confidence = max(cluster.aggregate_confidence, event.confidence)
             if event.bus_id:
-                bus_ids = cluster.bus_ids or []
+                bus_ids = list(cluster.bus_ids or [])
                 if event.bus_id not in bus_ids:
                     bus_ids.append(event.bus_id)
-                    cluster.bus_ids = bus_ids
+                    cluster.bus_ids = list(bus_ids)
             return cluster.id
 
     # Create new cluster
@@ -89,8 +87,21 @@ async def create_event(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new detection event from edge AI."""
+    if event_data.event_id:
+        existing = (await db.execute(select(Event).where(Event.event_id == event_data.event_id))).scalar_one_or_none()
+        if existing:
+            if existing.bus_id != event_data.bus_id:
+                raise HTTPException(status_code=409, detail="Event ID belongs to a different bus")
+            return existing
+    if not await db.get(Bus, event_data.bus_id):
+        raise HTTPException(status_code=404, detail="Bus not registered")
+    if event_data.camera_id:
+        camera = await db.get(Camera, event_data.camera_id)
+        if not camera or camera.bus_id != event_data.bus_id:
+            raise HTTPException(status_code=422, detail="Camera does not belong to this bus")
     event = Event(
-        event_id=f"EVT-{uuid.uuid4().hex[:8].upper()}",
+        event_id=event_data.event_id or f"EVT-{uuid.uuid4().hex}",
+        timestamp=event_data.timestamp or datetime.now(timezone.utc),
         event_type=event_data.event_type,
         severity=event_data.severity,
         confidence=event_data.confidence,
@@ -109,6 +120,18 @@ async def create_event(
     event.cluster_id = cluster_id
 
     db.add(event)
+    await db.flush()
+
+    metadata = event_data.metadata or {}
+    if event.event_type == EventType.CONGESTION and "vehicle_count" in metadata:
+        count = metadata.get("vehicle_count")
+        breakdown = metadata.get("vehicle_breakdown", {})
+        density = metadata.get("estimated_density")
+        level = metadata.get("congestion_level", "low")
+        if not isinstance(count, int) or count < 0 or not isinstance(breakdown, dict) or any(not isinstance(v, int) or v < 0 for v in breakdown.values()) or level not in {c.value for c in CongestionLevel} or (density is not None and (not isinstance(density, (float, int)) or not 0 <= density <= 1)):
+            raise HTTPException(422, "Invalid traffic observation metadata")
+        db.add(TrafficObservation(event_id=event.id, vehicle_count=count, vehicle_breakdown=breakdown,
+            estimated_density=density, congestion_level=level, average_speed=None))
 
     # Auto-generate alerts for high-severity events
     sev_str = event.severity.value if hasattr(event.severity, 'value') else str(event.severity)
@@ -121,7 +144,7 @@ async def create_event(
             category=alert_category,
             title=f"{type_str.replace('_', ' ').title()} Detected",
             description=event.description,
-            event_id=None,  # Will set after flush
+            event_id=event.id,
             status=AlertStatus.ACTIVE,
         )
         db.add(alert)
@@ -282,4 +305,4 @@ async def update_event(
     if update.description:
         event.description = update.description
 
-    return {"status": "updated", "event_id": event.id}
+    return {"status": "updated", "event_id": event.id, "persisted": True}

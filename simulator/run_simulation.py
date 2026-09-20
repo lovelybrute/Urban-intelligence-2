@@ -9,6 +9,7 @@ import os
 import time
 import asyncio
 import httpx
+from typing import Optional
 from loguru import logger
 from simulator.bus_sim import BusSimulator
 from simulator.event_generator import DemoEventGenerator
@@ -30,7 +31,7 @@ async def run_simulation(
     event_idx = 0
     tick = 0
 
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=5.0, headers={"Authorization": f"Bearer {os.environ.get('URBAN_API_TOKEN', '')}"}) as client:
         # Check backend availability
         try:
             res = await client.get(f"{api_url}/")
@@ -46,9 +47,11 @@ async def run_simulation(
             for telem in telemetries:
                 try:
                     # Update bus location endpoint
-                    await client.patch(
-                        f"{api_url}/api/buses/{telem.bus_id}/location",
+                    await client.post(
+                        f"{api_url}/api/buses/telemetry",
                         json={
+                            "bus_id": telem.bus_id,
+                            "is_simulated": True,
                             "latitude": telem.latitude,
                             "longitude": telem.longitude,
                             "speed": telem.speed_kmh

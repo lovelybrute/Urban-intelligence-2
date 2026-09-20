@@ -78,12 +78,12 @@ class ANPRProcessor:
         is_valid = bool(self.INDIAN_PLATE_REGEX.match(cleaned_text))
         
         # Overall confidence is geometric mean of plate localization and character recognition
-        overall_conf = round((det_conf * ocr_conf) ** 0.5, 3)
+        overall_conf = round((det_conf * ocr_conf) ** 0.5, 3) if det_conf else round(ocr_conf, 3)
 
         # Guard against hallucination
         is_low_conf = overall_conf < self.min_confidence or len(cleaned_text) < 6
         final_plate_number = cleaned_text if (not is_low_conf and is_valid) else ("UNKNOWN" if is_low_conf else f"{cleaned_text} (UNVERIFIED)")
-        requires_manual = is_low_conf or not is_valid
+        requires_manual = is_low_conf or not is_valid or vehicle_image_array is not None
 
         explainability = [
             f"Plate region detected with {int(det_conf * 100)}% visual localization confidence",
@@ -124,8 +124,12 @@ class ANPRProcessor:
             # If pyocr or pytesseract available
             try:
                 import pytesseract
-                text = pytesseract.image_to_string(thresh, config='--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-                return text.strip(), 0.88, 0.82
+                data = pytesseract.image_to_data(thresh, config='--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', output_type=pytesseract.Output.DICT)
+                tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
+                text = "".join(t for t, _ in tokens)
+                confidence = sum(c for _, c in tokens) / (100 * len(tokens)) if tokens else 0.0
+                # This function receives a crop; no plate detector confidence was measured.
+                return text, 0.0, confidence
             except Exception:
                 pass
         except Exception:

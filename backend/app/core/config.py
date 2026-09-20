@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "UrbanIntelligence"
     APP_ENV: str = "development"
     DEBUG: bool = False
+    SEED_DEMO_DATA: bool = True
     SECRET_KEY: str = "dev-secret-key-change-in-production-min-32-chars"
 
     # Database
