@@ -64,6 +64,12 @@ export const GisMap: React.FC<GisMapProps> = ({
       center: [17.41, 78.47],
       zoom: 12,
       zoomControl: false,
+      dragging: true,
+      touchZoom: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: true,
+      keyboard: true,
     });
 
     // Default street map. No API key required for the prototype.
@@ -493,7 +499,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               {([["street", "Map"], ["satellite", "Satellite"], ["topo", "Terrain"]] as const).map(([id, label]) => (
                 <button
                   key={id}
-                  onClick={() => setMapStyle(id)}
+                  onClick={() => { setMapStyle(id); setLayersOpen(false); }}
                   aria-pressed={mapStyle === id}
                   style={{
                     padding: "7px 8px",
@@ -514,7 +520,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               <input
                 type="checkbox"
                 checked={showHeatmap}
-                onChange={(e) => setShowHeatmap(e.target.checked)}
+                onChange={(e) => { setShowHeatmap(e.target.checked); setLayersOpen(false); }}
               />{" "}
               Congestion heat layer
             </label>
@@ -523,7 +529,7 @@ export const GisMap: React.FC<GisMapProps> = ({
                 <input
                   type="checkbox"
                   checked={showRoads}
-                  onChange={(e) => setShowRoads(e.target.checked)}
+                  onChange={(e) => { setShowRoads(e.target.checked); setLayersOpen(false); }}
                 />{" "}
                 Road condition layer
               </label>
@@ -541,7 +547,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               <input
                 type="checkbox"
                 checked={showBuses}
-                onChange={(e) => setShowBuses(e.target.checked)}
+                onChange={(e) => { setShowBuses(e.target.checked); setLayersOpen(false); }}
               />
               <span>Fleet buses ({buses.length})</span>
             </label>
@@ -559,7 +565,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               <input
                 type="checkbox"
                 checked={showRoutes}
-                onChange={(e) => setShowRoutes(e.target.checked)}
+                onChange={(e) => { setShowRoutes(e.target.checked); setLayersOpen(false); }}
               />
               <span>Corridor Routes ({routes.length})</span>
             </label>
@@ -579,7 +585,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               <input
                 type="checkbox"
                 checked={showDefects}
-                onChange={(e) => setShowDefects(e.target.checked)}
+                onChange={(e) => { setShowDefects(e.target.checked); setLayersOpen(false); }}
               />
               <span style={{ color: "#ea580c" }}>Road Defects & Water</span>
             </label>
@@ -599,7 +605,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               <input
                 type="checkbox"
                 checked={showCongestion}
-                onChange={(e) => setShowCongestion(e.target.checked)}
+                onChange={(e) => { setShowCongestion(e.target.checked); setLayersOpen(false); }}
               />
               <span style={{ color: "#db2777" }}>Bottlenecks</span>
             </label>
@@ -617,7 +623,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               <input
                 type="checkbox"
                 checked={showSafety}
-                onChange={(e) => setShowSafety(e.target.checked)}
+                onChange={(e) => { setShowSafety(e.target.checked); setLayersOpen(false); }}
               />
               <span style={{ color: "#eab308" }}>Pedestrian Safety</span>
             </label>
@@ -637,7 +643,7 @@ export const GisMap: React.FC<GisMapProps> = ({
               <input
                 type="checkbox"
                 checked={showIncidents}
-                onChange={(e) => setShowIncidents(e.target.checked)}
+                onChange={(e) => { setShowIncidents(e.target.checked); setLayersOpen(false); }}
               />
               <span style={{ color: "#dc2626" }}>Incidents & ANPR</span>
             </label>
