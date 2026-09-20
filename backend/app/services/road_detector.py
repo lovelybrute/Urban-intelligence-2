@@ -1,6 +1,7 @@
 from pathlib import Path
 from io import BytesIO
 import os
+import threading
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
@@ -17,6 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
 
 _model = None
+_inference_lock = threading.Lock()
 INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
 
 
@@ -53,13 +55,16 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
 
     model = get_model()
 
-    results = model.predict(
-        source=frame,
-        conf=confidence,
-        verbose=False,
-        imgsz=INFERENCE_SIZE,
-        device="cpu",
-    )
+    # Serialize inference on tiny CPU instances so concurrent scans do not
+    # exhaust CPU/RAM or invoke the same model object concurrently.
+    with _inference_lock:
+        results = model.predict(
+            source=frame,
+            conf=confidence,
+            verbose=False,
+            imgsz=INFERENCE_SIZE,
+            device="cpu",
+        )
 
     detections = []
 
