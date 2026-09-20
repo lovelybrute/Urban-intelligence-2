@@ -46,8 +46,8 @@ def model_health():
         "road_defect": {"ready": road.exists(), "weight": road.name, "custom_trained": road.exists()},
         "traffic_person": {"ready": YOLO is not None, "weight": "traffic_india.pt if present, otherwise official pretrained YOLO11n", "custom_trained": _weight("traffic_india.pt").exists()},
         "tracking": {"ready": YOLO is not None, "engine": "ByteTrack via Ultralytics", "custom_trained": False},
-        "anpr": {"ready": _weight("anpr_plate.pt").exists(), "weight": "anpr_plate.pt", "custom_trained": (WEIGHTS / "anpr_plate.pt").exists()},
-        "infrastructure": {"ready": _weight("infrastructure.pt").exists(), "weight": "infrastructure.pt", "custom_trained": (WEIGHTS / "infrastructure.pt").exists()},
+        "anpr": {"ready": _weight("anpr_plate.pt").exists(), "weight": "anpr_plate.pt", "custom_trained": _weight("anpr_plate.pt").exists()},
+        "infrastructure": {"ready": _weight("infrastructure.pt").exists(), "weight": "infrastructure.pt", "custom_trained": _weight("infrastructure.pt").exists()},
         "event_logic": {"ready": True, "note": "Temporal rules require video/track history; still-image endpoint reports observable risk inputs only"},
     }
 
