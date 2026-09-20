@@ -2219,3 +2219,17 @@ body {
 @keyframes deckFloat{0%,100%{transform:translateY(0) rotateX(0)}50%{transform:translateY(-4px) rotateX(.5deg)}}
 @keyframes scannerLine{0%,100%{transform:translateY(0);opacity:.15}50%{transform:translateY(420px);opacity:.65}}
 @media (prefers-reduced-motion:reduce){.priority-banner,.overview::before,.map-panel::after{animation:none!important}}
+
+
+/* Leaflet interaction safety: never transform the live map DOM */
+.map-panel .leaflet-container,
+.map-panel:hover .leaflet-container{
+  transform:none!important;
+  transition:filter .25s ease!important;
+  pointer-events:auto!important;
+  touch-action:none!important;
+  cursor:grab!important;
+}
+.map-panel .leaflet-container:active{cursor:grabbing!important}
+.leaflet-map-pane,.leaflet-tile-pane,.leaflet-overlay-pane,.leaflet-marker-pane{pointer-events:auto}
+.map-layer-controls{pointer-events:auto!important}
