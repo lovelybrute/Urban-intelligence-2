@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from app.services.road_detector import detect_road_defects
 
@@ -35,9 +36,12 @@ async def detect_road(
         )
 
     try:
-        detections = detect_road_defects(
+        # YOLO/PyTorch inference is CPU-heavy. Run it outside the async
+        # event loop so health/docs/API requests stay responsive during inference.
+        detections = await run_in_threadpool(
+            detect_road_defects,
             raw,
-            confidence=confidence,
+            confidence,
         )
     except ValueError:
         raise HTTPException(
