@@ -58,6 +58,8 @@ def analyse_video(raw: bytes, confidence: float=.25):
 
     motion=[]
     rash_candidates=[]
+    pedestrian_risk_candidates=[]
+    accident_candidates=[]
     for tid, pts in tracks.items():
         if len(pts)<3: continue
         distance=sum(hypot(b[1]-a[1],b[2]-a[2]) for a,b in zip(pts,pts[1:]))
@@ -69,6 +71,25 @@ def analyse_video(raw: bytes, confidence: float=.25):
         if class_by_track[tid] in VEHICLES and px_per_frame>35:
             rash_candidates.append({**item,"reason":"high image-plane motion; requires calibrated speed/trajectory validation"})
 
+    # Pairwise trajectory proximity is a screening signal, not accident proof.
+    ids=list(tracks)
+    for i, aid in enumerate(ids):
+        for bid in ids[i+1:]:
+            if class_by_track.get(aid) not in VEHICLES and class_by_track.get(bid) not in VEHICLES:
+                continue
+            amap={p[0]:p for p in tracks[aid]}
+            bmap={p[0]:p for p in tracks[bid]}
+            common=set(amap).intersection(bmap)
+            if not common: continue
+            closest=min(hypot(amap[n][1]-bmap[n][1],amap[n][2]-bmap[n][2]) for n in common)
+            acls,bcls=class_by_track.get(aid),class_by_track.get(bid)
+            if {acls,bcls} & {"person"} and ({acls,bcls} & VEHICLES) and closest < 80:
+                pedestrian_risk_candidates.append({"track_ids":[aid,bid],"min_pixel_distance":round(closest,2),
+                    "reason":"vehicle-person tracks entered close image-plane proximity"})
+            if acls in VEHICLES and bcls in VEHICLES and closest < 45:
+                accident_candidates.append({"track_ids":[aid,bid],"min_pixel_distance":round(closest,2),
+                    "reason":"vehicle tracks entered collision-proximity; requires impact/deceleration confirmation"})
+
     return {
         "engine":"YOLO + ByteTrack",
         "frames_processed":frame_no,
@@ -77,7 +98,9 @@ def analyse_video(raw: bytes, confidence: float=.25):
         "pedestrian_tracks":sum(1 for x in class_by_track.values() if x=="person"),
         "tracks":motion,
         "rash_driving_candidates":rash_candidates,
-        "hit_and_run_events":[],
+        "pedestrian_risk_candidates":pedestrian_risk_candidates,
+        "accident_candidates":accident_candidates,
+        "hit_and_run_candidates":[],
         "accident_events":[],
         "limitations":[
             "Rash-driving output is candidate screening, not a legal speed determination.",
