@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://urban-intelligence-2.vercel.app"
 
     # Edge AI
     EDGE_CONFIDENCE_THRESHOLD: float = 0.5
