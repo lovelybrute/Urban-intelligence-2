@@ -37,6 +37,10 @@ ultralytics==8.3.0
 # torch==2.5.0
 # torchvision==0.20.0
 
+# OCR (ANPR)
+paddleocr==2.9.1
+paddlepaddle==2.6.2
+
 # Utilities
 python-dotenv==1.0.1
 loguru==0.7.3
