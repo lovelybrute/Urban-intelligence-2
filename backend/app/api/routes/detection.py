@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.services.road_detector import detect_road_defects
 from app.services.vision_detector import detect_scene, model_health
+from app.services.video_analytics import analyse_video
 
 router = APIRouter(prefix="/api/detect", tags=["AI Detection"])
 MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -39,5 +40,22 @@ async def detect_traffic_scene(file: UploadFile = File(...), confidence: float =
         return detect_scene(raw, confidence=confidence)
     except ValueError:
         raise HTTPException(status_code=422, detail="Upload a valid image")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.post("/video")
+async def detect_video_events(file: UploadFile = File(...), confidence: float = 0.25):
+    # Larger cap than still images; kept bounded for public API safety.
+    raw = await file.read(25 * 1024 * 1024 + 1)
+    await file.close()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty video")
+    if len(raw) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Video exceeds 25 MB")
+    try:
+        return analyse_video(raw, confidence=confidence)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
