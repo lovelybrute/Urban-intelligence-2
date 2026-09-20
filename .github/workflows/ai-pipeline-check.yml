@@ -33,3 +33,14 @@ jobs:
           from app.api.routes import detection
           print("AI pipeline imports OK")
           PY
+      - name: Validate committed road model
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from ultralytics import YOLO
+          p = Path("frontend/ml/weights/road_defect_best.pt")
+          assert p.exists(), f"Missing committed road model: {p}"
+          model = YOLO(str(p))
+          print("ROAD_MODEL_NAMES=", model.names)
+          print("ROAD_MODEL_LOAD_OK")
+          PY
