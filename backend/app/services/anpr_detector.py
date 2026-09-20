@@ -18,8 +18,10 @@ try:
 except ImportError:
     PaddleOCR=None
 
-ROOT=Path(__file__).resolve().parents[3]
-WEIGHT=ROOT/"frontend"/"ml"/"weights"/"anpr_plate.pt"
+REPO_ROOT=Path(__file__).resolve().parents[3]
+BACKEND_WEIGHT=Path(__file__).resolve().parents[2]/"ml"/"weights"/"anpr_plate.pt"
+REPO_WEIGHT=REPO_ROOT/"frontend"/"ml"/"weights"/"anpr_plate.pt"
+WEIGHT=BACKEND_WEIGHT if BACKEND_WEIGHT.exists() else REPO_WEIGHT
 _plate_model=None
 _ocr=None
 INDIAN_PLATE=re.compile(r"^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$")
