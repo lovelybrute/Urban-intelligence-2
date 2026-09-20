@@ -14,8 +14,10 @@ try:
 except ImportError:
     YOLO=None
 
-ROOT=Path(__file__).resolve().parents[3]
-WEIGHT=ROOT/"frontend"/"ml"/"weights"/"infrastructure.pt"
+REPO_ROOT=Path(__file__).resolve().parents[3]
+BACKEND_WEIGHT=Path(__file__).resolve().parents[2]/"ml"/"weights"/"infrastructure.pt"
+REPO_WEIGHT=REPO_ROOT/"frontend"/"ml"/"weights"/"infrastructure.pt"
+WEIGHT=BACKEND_WEIGHT if BACKEND_WEIGHT.exists() else REPO_WEIGHT
 _model=None
 
 def _get_model():
