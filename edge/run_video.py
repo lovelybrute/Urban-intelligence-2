@@ -43,28 +43,33 @@ class GPSLog:
         return self.rows[idx]
 
 async def run(args):
+    # Keep newly added model options backwards-compatible with older callers/tests.
+    road_weights = getattr(args, "road_weights", None)
+    traffic_weights = getattr(args, "traffic_weights", None)
+    infrastructure_weights = getattr(args, "infrastructure_weights", None)
+    anpr_weights = getattr(args, "anpr_weights", None)
     if not Path(args.video).is_file():
         raise ValueError("Video file not found")
     gps = GPSLog(args.gps)
     start = datetime.fromisoformat(args.start_time.replace('Z','+00:00'))
     if start.tzinfo is None:
         raise ValueError("Start time must include timezone, e.g. +05:30")
-    if args.road_weights and not Path(args.road_weights).is_file():
+    if road_weights and not Path(road_weights).is_file():
         raise ValueError("Road weights not found")
-    if args.infrastructure_weights and not Path(args.infrastructure_weights).is_file():
+    if infrastructure_weights and not Path(infrastructure_weights).is_file():
         raise ValueError("Infrastructure weights not found")
-    if args.anpr_weights and not Path(args.anpr_weights).is_file():
+    if anpr_weights and not Path(anpr_weights).is_file():
         raise ValueError("ANPR weights not found")
-    road = RoadDefectProcessor(model_path=args.road_weights)
-    if args.road_weights and not road.is_model_loaded:
+    road = RoadDefectProcessor(model_path=road_weights)
+    if road_weights and not road.is_model_loaded:
         raise RuntimeError("Road weights failed to load; install edge inference dependencies")
-    infrastructure = RoadDefectProcessor(model_path=args.infrastructure_weights)
-    if args.infrastructure_weights and not infrastructure.is_model_loaded:
+    infrastructure = RoadDefectProcessor(model_path=infrastructure_weights)
+    if infrastructure_weights and not infrastructure.is_model_loaded:
         raise RuntimeError("Infrastructure weights failed to load; install edge inference dependencies")
-    traffic = TrafficProcessor(model_path=args.traffic_weights)
+    traffic = TrafficProcessor(model_path=traffic_weights)
     safety = SafetyProcessor()
     incident = IncidentProcessor()
-    anpr = ANPRProcessor(model_path=args.anpr_weights)
+    anpr = ANPRProcessor(model_path=anpr_weights)
     queue = EdgeEventQueue(args.api, os.environ.get("URBAN_API_TOKEN"), args.queue)
     dedup = SpatialDeduplicator(time_window_seconds=60)
     capture = cv2.VideoCapture(args.video)
