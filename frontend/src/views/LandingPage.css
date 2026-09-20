@@ -699,19 +699,8 @@
 
 /* Map interaction + landing overlay collision fixes */
 .hero-map-stage{perspective:1000px!important;transform-style:preserve-3d!important}
-.hero-map-stage::before{
-  content:"";
-  position:absolute;
-  inset:34px -8px 12px 22px;
-  border:1px solid rgba(127,232,203,.13);
-  border-radius:24px;
-  background:linear-gradient(145deg,rgba(75,213,188,.08),rgba(25,67,88,.03));
-  box-shadow:0 38px 90px rgba(0,0,0,.5),0 0 70px rgba(106,198,229,.1);
-  transform:perspective(1000px) rotateY(-7deg) rotateX(3deg) rotateZ(1deg) translateZ(-18px);
-  pointer-events:none;
-}
-.hero-map{transform:none!important;will-change:auto}
-.hero-map-stage:hover .hero-map{transform:none!important}
+.hero-map{transform:rotateY(-7deg) rotateX(3deg) rotateZ(1deg)!important;will-change:transform}
+.hero-map-stage:hover .hero-map{transform:rotateY(-2deg) rotateX(1deg) rotateZ(.3deg)!important}
 .hero-map .leaflet-container{pointer-events:auto!important;touch-action:none!important;transform:none!important}
 .gis-map-canvas{pointer-events:auto!important;user-select:none}
 .hero-map::after{pointer-events:none!important}
@@ -737,7 +726,6 @@
   .landing-copy h1{font-size:clamp(42px,13vw,60px);line-height:1}
   .hero-actions>.btn{min-height:46px;flex:1 1 150px;justify-content:center}
   .hero-map-stage{width:100%;padding-bottom:18px}
-  .hero-map-stage::before{inset:24px -4px 4px 10px;transform:rotate(-1.2deg)}
   .hero-map-title,.hero-map-footer{padding:14px;gap:10px}
   .hero-map-title>span,.hero-map-footer>span{font-size:12px;letter-spacing:0}
   .hero-map .gis-map-shell{height:390px!important;min-height:390px}

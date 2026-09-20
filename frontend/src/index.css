@@ -2436,6 +2436,10 @@ body {
   overscroll-behavior: contain;
   -webkit-tap-highlight-color: transparent;
 }
+.gis-map-canvas.leaflet-container.is-manual-panning,
+.gis-map-canvas.leaflet-container.is-manual-panning * {
+  cursor: grabbing !important;
+}
 .gis-map-canvas.leaflet-container:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -3px;

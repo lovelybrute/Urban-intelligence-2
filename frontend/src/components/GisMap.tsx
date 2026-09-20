@@ -48,6 +48,13 @@ export const GisMap: React.FC<GisMapProps> = ({
   const [mapStyle, setMapStyle] = useState<"street" | "satellite" | "topo">("street");
   const [mapReady, setMapReady] = useState(false);
   const controlsRef = useRef<HTMLDivElement>(null);
+  const manualPanRef = useRef<{
+    pointerId: number;
+    lastX: number;
+    lastY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
 
   // Layer filter toggles
   const [showBuses, setShowBuses] = useState(true);
@@ -129,6 +136,84 @@ export const GisMap: React.FC<GisMapProps> = ({
       window.removeEventListener("resize", refresh);
     };
   }, [mapReady, height]);
+
+  // Leaflet's mouse drag can lose its movement events when the map sits inside
+  // a transformed 3D card. Handle mouse panning at the viewport level so the
+  // tilted presentation remains interactive. Touch and pinch stay native.
+  useEffect(() => {
+    if (!mapReady || !mapContainerRef.current || !mapInstanceRef.current) return;
+
+    const container = mapContainerRef.current;
+    const map = mapInstanceRef.current;
+
+    const endPan = (event: PointerEvent) => {
+      const pan = manualPanRef.current;
+      if (!pan || event.pointerId !== pan.pointerId) return;
+
+      suppressClickRef.current = pan.moved;
+      manualPanRef.current = null;
+      container.classList.remove("is-manual-panning");
+      map.dragging.enable();
+    };
+
+    const movePan = (event: PointerEvent) => {
+      const pan = manualPanRef.current;
+      if (!pan || event.pointerId !== pan.pointerId) return;
+
+      const deltaX = event.clientX - pan.lastX;
+      const deltaY = event.clientY - pan.lastY;
+      if (!pan.moved && Math.hypot(deltaX, deltaY) < 3) return;
+
+      pan.moved = true;
+      pan.lastX = event.clientX;
+      pan.lastY = event.clientY;
+      map.panBy(L.point(-deltaX, -deltaY), {
+        animate: false,
+        noMoveStart: true,
+      });
+      container.dataset.panGestures = String(
+        Number(container.dataset.panGestures || "0") + 1,
+      );
+      event.preventDefault();
+    };
+
+    const beginPan = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse" || event.button !== 0) return;
+      if ((event.target as Element).closest(".leaflet-control, a, button, input, label")) return;
+
+      map.dragging.disable();
+      manualPanRef.current = {
+        pointerId: event.pointerId,
+        lastX: event.clientX,
+        lastY: event.clientY,
+        moved: false,
+      };
+      container.classList.add("is-manual-panning");
+    };
+
+    const suppressDraggedClick = (event: MouseEvent) => {
+      if (!suppressClickRef.current) return;
+      suppressClickRef.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    container.addEventListener("pointerdown", beginPan, true);
+    container.addEventListener("click", suppressDraggedClick, true);
+    window.addEventListener("pointermove", movePan, { passive: false, capture: true });
+    window.addEventListener("pointerup", endPan, true);
+    window.addEventListener("pointercancel", endPan, true);
+
+    return () => {
+      container.removeEventListener("pointerdown", beginPan, true);
+      container.removeEventListener("click", suppressDraggedClick, true);
+      window.removeEventListener("pointermove", movePan, true);
+      window.removeEventListener("pointerup", endPan, true);
+      window.removeEventListener("pointercancel", endPan, true);
+      manualPanRef.current = null;
+      map.dragging.enable();
+    };
+  }, [mapReady]);
 
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -492,10 +577,6 @@ export const GisMap: React.FC<GisMapProps> = ({
         role="application"
         aria-label="Interactive city map. Drag to move, pinch or use the zoom buttons to zoom."
         tabIndex={0}
-        onPointerDown={() => {
-          mapInstanceRef.current?.dragging.enable();
-          mapInstanceRef.current?.touchZoom.enable();
-        }}
         style={{ width: "100%", height: "100%", position: "relative", zIndex: 1, cursor: "grab" }}
       />
 
