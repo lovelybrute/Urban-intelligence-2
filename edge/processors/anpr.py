@@ -6,11 +6,27 @@ Includes plate localization, image enhancement, OCR extraction, Indian registrat
 format syntax validation, and confidence calibration.
 """
 import re
+import os
+import shutil
 import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+
+
+def _configure_tesseract(pytesseract) -> bool:
+    """Configure common Windows installs when tesseract.exe is absent from PATH."""
+    candidates = [
+        shutil.which("tesseract"),
+        Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Tesseract-OCR" / "tesseract.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Tesseract-OCR" / "tesseract.exe",
+    ]
+    executable = next((Path(path) for path in candidates if path and Path(path).is_file()), None)
+    if executable:
+        pytesseract.pytesseract.tesseract_cmd = str(executable)
+        return True
+    return False
 
 
 @dataclass
@@ -145,6 +161,8 @@ class ANPRProcessor:
             # If pyocr or pytesseract available
             try:
                 import pytesseract
+                if not _configure_tesseract(pytesseract):
+                    return "", 0.0, 0.0
                 data = pytesseract.image_to_data(thresh, config='--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', output_type=pytesseract.Output.DICT)
                 tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
                 text = "".join(t for t, _ in tokens)

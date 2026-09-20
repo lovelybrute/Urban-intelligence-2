@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +19,20 @@ REPO_ROOT = SCRIPT.parents[3]
 ML_ROOT = SCRIPT.parents[1]
 WEIGHTS = ML_ROOT / "weights"
 MANIFEST = ML_ROOT / "model_manifest.json"
+
+
+def configure_tesseract(pytesseract) -> str | None:
+    """Find Tesseract on Windows even when its installer did not update PATH."""
+    candidates = [
+        shutil.which("tesseract"),
+        Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Tesseract-OCR" / "tesseract.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Tesseract-OCR" / "tesseract.exe",
+    ]
+    executable = next((Path(path) for path in candidates if path and Path(path).is_file()), None)
+    if executable:
+        pytesseract.pytesseract.tesseract_cmd = str(executable)
+        return str(executable)
+    return None
 
 
 def prepare_traffic(base_model: str) -> dict:
@@ -56,11 +71,15 @@ def prepare_traffic(base_model: str) -> dict:
 def check_ocr() -> dict:
     try:
         import pytesseract
+        executable = configure_tesseract(pytesseract)
+        if executable is None:
+            raise FileNotFoundError("Tesseract executable was not found in PATH or standard Windows install folders")
         version = str(pytesseract.get_tesseract_version())
         return {
             "status": "ready_pretrained_ocr",
             "engine": "Tesseract",
             "version": version,
+            "executable": executable,
             "note": "OCR is available; plate localization still needs a trained detector or a reviewed vehicle crop.",
         }
     except Exception as exc:
