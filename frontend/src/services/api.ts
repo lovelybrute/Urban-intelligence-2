@@ -11,10 +11,13 @@ import {
   RoadDetectionResult,
 } from "../types";
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
-  /\/$/,
-  "",
-);
+const configuredApiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+// FastAPI routes are mounted under /api. Production provides the Render host.
+const API_BASE = configuredApiBase
+  ? configuredApiBase.endsWith("/api")
+    ? configuredApiBase
+    : `${configuredApiBase}/api`
+  : "/api";
 const requestedMode = new URLSearchParams(window.location.search).get("mode");
 export const DEMO_MODE =
   requestedMode === "demo" ||
