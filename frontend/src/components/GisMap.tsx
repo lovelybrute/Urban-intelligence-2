@@ -46,6 +46,7 @@ export const GisMap: React.FC<GisMapProps> = ({
   const [tileError, setTileError] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"street" | "satellite" | "topo">("street");
+  const [mapReady, setMapReady] = useState(false);
 
   // Layer filter toggles
   const [showBuses, setShowBuses] = useState(true);
@@ -90,6 +91,8 @@ export const GisMap: React.FC<GisMapProps> = ({
     routesLayerRef.current = L.layerGroup().addTo(map);
     markersLayerRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
+    setMapReady(true);
+    requestAnimationFrame(() => map.invalidateSize({ pan: false }));
 
     const resize = new ResizeObserver(() => map.invalidateSize());
     resize.observe(mapContainerRef.current);
@@ -97,8 +100,22 @@ export const GisMap: React.FC<GisMapProps> = ({
       resize.disconnect();
       map.remove();
       mapInstanceRef.current = null;
+      setMapReady(false);
     };
   }, []);
+
+  // Keep Leaflet sized and draggable when its card animates or the viewport changes.
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+    const refresh = () => map.invalidateSize({ pan: false });
+    const timers = [80, 350, 900].map((ms) => window.setTimeout(refresh, ms));
+    window.addEventListener("resize", refresh);
+    return () => {
+      timers.forEach(window.clearTimeout);
+      window.removeEventListener("resize", refresh);
+    };
+  }, [mapReady, height]);
 
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -454,7 +471,11 @@ export const GisMap: React.FC<GisMapProps> = ({
       }}
     >
       {/* Map Container */}
-      <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
+      <div
+        ref={mapContainerRef}
+        className="gis-map-canvas"
+        style={{ width: "100%", height: "100%", position: "relative", zIndex: 1, cursor: "grab" }}
+      />
 
       {tileError && (
         <div className="map-warning" role="status">

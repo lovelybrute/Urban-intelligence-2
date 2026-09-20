@@ -698,15 +698,18 @@
 
 
 /* Map interaction + landing overlay collision fixes */
-.hero-map-stage{perspective:none!important;transform-style:flat!important}
-.hero-map,.hero-map-stage:hover .hero-map{transform:none!important}
-.hero-map .leaflet-container{transform:none!important;pointer-events:auto!important;touch-action:none}
+.hero-map-stage{perspective:1000px!important;transform-style:preserve-3d!important}
+.hero-map{transform:rotateY(-7deg) rotateX(3deg) rotateZ(1deg)!important}
+.hero-map-stage:hover .hero-map{transform:rotateY(-2deg) rotateX(1deg) rotateZ(.3deg)!important}
+.hero-map .leaflet-container{pointer-events:auto!important;touch-action:none!important;transform:none!important}
+.hero-map .leaflet-map-pane,.hero-map .leaflet-tile-pane,.hero-map .leaflet-overlay-pane{pointer-events:auto}
+.gis-map-canvas{pointer-events:auto!important;user-select:none}
 .hero-map::after{pointer-events:none!important}
 .map-floating-note{
   left:18px!important;
   right:18px!important;
-  bottom:-28px!important;
-  max-width:440px;
+  bottom:-54px!important;
+  max-width:390px;
   overflow:hidden;
   z-index:4;
 }
