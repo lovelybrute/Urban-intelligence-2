@@ -15,7 +15,11 @@ except ImportError:
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BACKEND_WEIGHTS = Path(__file__).resolve().parents[2] / "ml" / "weights"
 REPO_WEIGHTS = REPO_ROOT / "frontend" / "ml" / "weights"
-WEIGHTS = BACKEND_WEIGHTS if BACKEND_WEIGHTS.exists() else REPO_WEIGHTS
+
+def _weight(name: str) -> Path:
+    local = BACKEND_WEIGHTS / name
+    repo = REPO_WEIGHTS / name
+    return local if local.exists() else repo
 _traffic = None
 INFERENCE_SIZE = int(os.getenv("TRAFFIC_AI_IMGSZ", "320"))
 
@@ -29,21 +33,21 @@ def _load_traffic():
     if _traffic is None:
         if torch is not None:
             torch.set_num_threads(max(1, int(os.getenv("TORCH_NUM_THREADS", "1"))))
-        custom = WEIGHTS / "traffic_india.pt"
-        local = WEIGHTS / "traffic_coco.pt"
+        custom = _weight("traffic_india.pt")
+        local = _weight("traffic_coco.pt")
         # YOLO11n is an official pretrained fallback, not a custom-trained model.
         source = str(custom if custom.exists() else local) if (custom.exists() or local.exists()) else "yolo11n.pt"
         _traffic = YOLO(source)
     return _traffic
 
 def model_health():
-    road = WEIGHTS / "road_defect_best.pt"
+    road = _weight("road_defect_best.pt")
     return {
         "road_defect": {"ready": road.exists(), "weight": road.name, "custom_trained": road.exists()},
-        "traffic_person": {"ready": YOLO is not None, "weight": "traffic_india.pt if present, otherwise official pretrained YOLO11n", "custom_trained": (WEIGHTS / "traffic_india.pt").exists()},
+        "traffic_person": {"ready": YOLO is not None, "weight": "traffic_india.pt if present, otherwise official pretrained YOLO11n", "custom_trained": _weight("traffic_india.pt").exists()},
         "tracking": {"ready": YOLO is not None, "engine": "ByteTrack via Ultralytics", "custom_trained": False},
-        "anpr": {"ready": (WEIGHTS / "anpr_plate.pt").exists(), "weight": "anpr_plate.pt", "custom_trained": (WEIGHTS / "anpr_plate.pt").exists()},
-        "infrastructure": {"ready": (WEIGHTS / "infrastructure.pt").exists(), "weight": "infrastructure.pt", "custom_trained": (WEIGHTS / "infrastructure.pt").exists()},
+        "anpr": {"ready": _weight("anpr_plate.pt").exists(), "weight": "anpr_plate.pt", "custom_trained": (WEIGHTS / "anpr_plate.pt").exists()},
+        "infrastructure": {"ready": _weight("infrastructure.pt").exists(), "weight": "infrastructure.pt", "custom_trained": (WEIGHTS / "infrastructure.pt").exists()},
         "event_logic": {"ready": True, "note": "Temporal rules require video/track history; still-image endpoint reports observable risk inputs only"},
     }
 
@@ -79,4 +83,4 @@ def detect_scene(raw: bytes, confidence: float = 0.25):
             vehicles += int(name in VEHICLE_CLASSES)
     # Density is an explicit observable proxy for the still-image endpoint.
     density = "high" if vehicles >= 12 else "medium" if vehicles >= 6 else "low"
-    return {"model":"traffic_india.pt" if (WEIGHTS/"traffic_india.pt").exists() else "official-pretrained-yolo11n","custom_trained":(WEIGHTS/"traffic_india.pt").exists(),"vehicle_count":vehicles,"pedestrian_count":people,"density_level":density,"class_counts":counts,"detection_count":len(detections),"detections":detections}
+    return {"model":"traffic_india.pt" if _weight("traffic_india.pt").exists() else "official-pretrained-yolo11n","custom_trained":(WEIGHTS/"traffic_india.pt").exists(),"vehicle_count":vehicles,"pedestrian_count":people,"density_level":density,"class_counts":counts,"detection_count":len(detections),"detections":detections}
