@@ -3,7 +3,11 @@ from io import BytesIO
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
-from ultralytics import YOLO
+
+try:
+    from ultralytics import YOLO
+except ImportError:  # Optional: edge nodes normally perform GPU inference.
+    YOLO = None
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -14,6 +18,12 @@ _model = None
 
 def get_model():
     global _model
+
+    if YOLO is None:
+        raise RuntimeError(
+            "Backend AI detection is not installed. Use the edge inference "
+            "pipeline, or install the optional ultralytics dependency."
+        )
 
     if _model is None:
         if not MODEL_PATH.exists():
