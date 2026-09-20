@@ -71,10 +71,11 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
             class_id = int(box.cls[0].item())
             score = float(box.conf[0].item())
 
-            x1, y1, x2, y2 = [
-                round(float(v), 2)
-                for v in box.xyxy[0].tolist()
-            ]
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            x1 = round(float(x1) * scale_x, 2)
+            y1 = round(float(y1) * scale_y, 2)
+            x2 = round(float(x2) * scale_x, 2)
+            y2 = round(float(y2) * scale_y, 2)
 
             detections.append(
                 {
