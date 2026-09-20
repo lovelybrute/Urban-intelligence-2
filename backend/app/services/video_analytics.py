@@ -7,6 +7,7 @@ from collections import defaultdict
 from math import hypot
 from pathlib import Path
 import tempfile
+import os
 
 try:
     from ultralytics import YOLO
@@ -42,7 +43,7 @@ def analyse_video(raw: bytes, confidence: float=.25):
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
         f.write(raw); path=f.name
     try:
-        results=_model_instance().track(source=path, tracker="bytetrack.yaml", conf=confidence, persist=True, stream=True, verbose=False)
+        results=_model_instance().track(source=path, tracker="bytetrack.yaml", conf=confidence, persist=True, stream=True, verbose=False, imgsz=int(os.getenv("VIDEO_AI_IMGSZ","320")), device="cpu", vid_stride=max(1,int(os.getenv("VIDEO_AI_STRIDE","2"))))
         for result in results:
             frame_no+=1
             if result.boxes is None or result.boxes.id is None: continue
