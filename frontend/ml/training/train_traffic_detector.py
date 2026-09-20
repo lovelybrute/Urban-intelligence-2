@@ -1,51 +1,45 @@
-"""
-Urban Intelligence Platform - Traffic & Vehicle Model Training Pipeline
+"""Train the custom India traffic/person detector.
 
-Trains YOLOv8 for vehicle classification (car, bus, truck, motorcycle, auto_rickshaw, etc.)
-Usage:
-    python ml/training/train_traffic_detector.py --epochs 60 --batch 16
+Run from any directory:
+python frontend/ml/training/train_traffic_detector.py --epochs 60 --batch 4 --device 0
 """
 import argparse
-import os
-from loguru import logger
+from pathlib import Path
+from ultralytics import YOLO
 
+HERE = Path(__file__).resolve().parent
+ML_ROOT = HERE.parent
+DATA = ML_ROOT / "configs" / "yolo_traffic.yaml"
+RUNS = ML_ROOT / "runs"
+WEIGHTS = ML_ROOT / "weights"
 
-def train_traffic_model(
-    config_path: str = "ml/configs/yolo_traffic.yaml",
-    base_model: str = "yolov8n.pt",
-    epochs: int = 60,
-    batch: int = 16,
-    imgsz: int = 640,
-    output_dir: str = "ml/artifacts/traffic_detector"
-):
-    try:
-        from ultralytics import YOLO
-        import torch
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        logger.info(f"Initiating traffic detector training on device: {device}")
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--epochs", type=int, default=60)
+    p.add_argument("--batch", type=int, default=4)
+    p.add_argument("--imgsz", type=int, default=640)
+    p.add_argument("--device", default="0")
+    p.add_argument("--base", default="yolo11n.pt")
+    args = p.parse_args()
 
-        model = YOLO(base_model)
-        results = model.train(
-            data=config_path,
-            epochs=epochs,
-            imgsz=imgsz,
-            batch=batch,
-            device=device,
-            project=output_dir,
-            name="train_run",
-            exist_ok=True
-        )
-        logger.info("Traffic detector training finished.")
-    except ImportError:
-        logger.warning(
-            "Ultralytics or PyTorch not installed in current environment. "
-            "To train: pip install ultralytics torch torchvision"
-        )
-
+    model = YOLO(args.base)
+    result = model.train(
+        data=str(DATA),
+        epochs=args.epochs,
+        batch=args.batch,
+        imgsz=args.imgsz,
+        device=args.device,
+        project=str(RUNS),
+        name="traffic_india",
+        exist_ok=True,
+        workers=2,
+    )
+    best = Path(result.save_dir) / "weights" / "best.pt"
+    WEIGHTS.mkdir(parents=True, exist_ok=True)
+    target = WEIGHTS / "traffic_india.pt"
+    target.write_bytes(best.read_bytes())
+    print(f"Saved traffic model candidate to {target}")
+    print("Validate mAP/precision/recall before marking this custom model production-ready.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=60)
-    parser.add_argument("--batch", type=int, default=16)
-    args = parser.parse_args()
-    train_traffic_model(epochs=args.epochs, batch=args.batch)
+    main()
