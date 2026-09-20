@@ -14,8 +14,10 @@ except ImportError:
     YOLO = None
 
 VEHICLES={"car","motorcycle","bus","truck","bicycle"}
-ROOT=Path(__file__).resolve().parents[3]
-WEIGHTS=ROOT/"frontend"/"ml"/"weights"
+REPO_ROOT=Path(__file__).resolve().parents[3]
+BACKEND_WEIGHTS=Path(__file__).resolve().parents[2]/"ml"/"weights"
+REPO_WEIGHTS=REPO_ROOT/"frontend"/"ml"/"weights"
+WEIGHTS=BACKEND_WEIGHTS if BACKEND_WEIGHTS.exists() else REPO_WEIGHTS
 _model=None
 
 def _model_instance():
