@@ -19,7 +19,7 @@ WEIGHTS = BACKEND_WEIGHTS if BACKEND_WEIGHTS.exists() else REPO_WEIGHTS
 _traffic = None
 INFERENCE_SIZE = int(os.getenv("TRAFFIC_AI_IMGSZ", "320"))
 
-VEHICLE_CLASSES = {"car", "motorcycle", "bus", "truck", "bicycle"}
+VEHICLE_CLASSES = {"car", "motorcycle", "bus", "truck", "bicycle", "auto_rickshaw", "emergency"}
 PERSON_CLASS = "person"
 
 def _load_traffic():
