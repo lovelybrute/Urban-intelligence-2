@@ -765,6 +765,19 @@ export const apiClient = {
     file: File,
     confidence = 0.25,
   ): Promise<RoadDetectionResult> => {
+    // Wake/check the free backend before starting expensive inference.
+    const healthResponse = await request("/detect/health", {
+      signal: AbortSignal.timeout(70000),
+    });
+    const health = await healthResponse.json();
+    const roadReady =
+      health?.road_model_ready ?? health?.road_defect?.ready ?? true;
+    const runtimeReady =
+      health?.ultralytics_ready ?? health?.road_defect?.ready ?? true;
+    if (!roadReady || !runtimeReady) {
+      throw new Error("Road AI model is not ready on the backend.");
+    }
+
     const formData = new FormData();
     formData.append("file", file);
 
@@ -773,7 +786,7 @@ export const apiClient = {
       {
         method: "POST",
         body: formData,
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(180000),
       },
     );
 
