@@ -18,7 +18,11 @@ VEHICLES={"car","motorcycle","bus","truck","bicycle","auto_rickshaw","emergency"
 REPO_ROOT=Path(__file__).resolve().parents[3]
 BACKEND_WEIGHTS=Path(__file__).resolve().parents[2]/"ml"/"weights"
 REPO_WEIGHTS=REPO_ROOT/"frontend"/"ml"/"weights"
-WEIGHTS=BACKEND_WEIGHTS if BACKEND_WEIGHTS.exists() else REPO_WEIGHTS
+
+def _weight(name: str) -> Path:
+    local=BACKEND_WEIGHTS/name
+    repo=REPO_WEIGHTS/name
+    return local if local.exists() else repo
 _model=None
 
 def _model_instance():
@@ -26,8 +30,8 @@ def _model_instance():
     if YOLO is None:
         raise RuntimeError("Ultralytics is not installed")
     if _model is None:
-        custom=WEIGHTS/"traffic_india.pt"
-        local=WEIGHTS/"traffic_coco.pt"
+        custom=_weight("traffic_india.pt")
+        local=_weight("traffic_coco.pt")
         source=str(custom if custom.exists() else local) if (custom.exists() or local.exists()) else "yolo11n.pt"
         _model=YOLO(source)
     return _model
