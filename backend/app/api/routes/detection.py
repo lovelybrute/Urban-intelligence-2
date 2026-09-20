@@ -49,6 +49,11 @@ async def detect_road(
             status_code=503,
             detail=str(exc),
         )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        )
 
     return {
         "model": "road_defect_best.pt",
