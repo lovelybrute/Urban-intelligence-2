@@ -1,12 +1,17 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from app.services.road_detector import detect_road_defects
+from app.services.road_detector import detect_road_defects, road_model_health
 
 
 router = APIRouter(prefix="/api/detect", tags=["AI Detection"])
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
+
+
+@router.get("/health")
+def detection_health():
+    return road_model_health()
 
 
 @router.post("/road")
