@@ -158,16 +158,33 @@ class ANPRProcessor:
             thresh = cv2.adaptiveThreshold(
                 denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
             )
-            # If pyocr or pytesseract available
+            # Prefer EasyOCR in cloud deployments: unlike pytesseract it does not
+            # require a separately installed Tesseract system executable.
+            try:
+                import easyocr
+                if not hasattr(self, "_easyocr_reader"):
+                    self._easyocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+                reads = self._easyocr_reader.readtext(
+                    thresh, detail=1,
+                    allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+                    paragraph=False,
+                )
+                if reads:
+                    text = "".join(str(item[1]).strip() for item in reads)
+                    confidence = sum(float(item[2]) for item in reads) / len(reads)
+                    return text, detection_confidence, confidence
+            except Exception:
+                pass
+
+            # Local fallback when Tesseract happens to be installed.
             try:
                 import pytesseract
-                if not _configure_tesseract(pytesseract):
-                    return "", 0.0, 0.0
-                data = pytesseract.image_to_data(thresh, config='--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', output_type=pytesseract.Output.DICT)
-                tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
-                text = "".join(t for t, _ in tokens)
-                confidence = sum(c for _, c in tokens) / (100 * len(tokens)) if tokens else 0.0
-                return text, detection_confidence, confidence
+                if _configure_tesseract(pytesseract):
+                    data = pytesseract.image_to_data(thresh, config='--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', output_type=pytesseract.Output.DICT)
+                    tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
+                    text = "".join(t for t, _ in tokens)
+                    confidence = sum(c for _, c in tokens) / (100 * len(tokens)) if tokens else 0.0
+                    return text, detection_confidence, confidence
             except Exception:
                 pass
         except Exception:
