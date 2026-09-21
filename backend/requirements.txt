@@ -37,9 +37,9 @@ Pillow==11.1.0
 torch==2.5.1+cpu; sys_platform == "linux"
 torchvision==0.20.1+cpu; sys_platform == "linux"
 ultralytics==8.3.0
-onnxruntime==1.20.1
+onnxruntime==1.23.2
 
-# OCR prototype (requires tesseract executable on host for text recognition)\npytesseract==0.3.13\n\n# Utilities
+# OCR prototype - self-contained cloud OCR\neasyocr==1.7.2\n\n# Utilities
 python-dotenv==1.0.1
 loguru==0.7.3
 geopy==2.4.1
