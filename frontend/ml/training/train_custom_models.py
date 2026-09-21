@@ -8,6 +8,8 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -50,7 +52,20 @@ def dataset_counts(root: Path) -> tuple[int, int, int, int]:
     return train_images, val_images, train_labels, val_labels
 
 
+def validate_dataset(name: str, job: dict) -> tuple[bool, str]:
+    class_counts = {"traffic": 8, "anpr": 1, "infrastructure": 7}
+    validator = SCRIPT.parent / "validate_yolo_dataset.py"
+    result = subprocess.run(
+        [sys.executable, str(validator), str(job["dataset"]), "--classes", str(class_counts[name])],
+        capture_output=True, text=True,
+    )
+    return result.returncode == 0, (result.stdout + result.stderr).strip()
+
+
 def train_job(name: str, job: dict, batch: int, imgsz: int, workers: int) -> dict:
+    valid, validation_report = validate_dataset(name, job)
+    if not valid:
+        return {"status": "blocked_invalid_dataset", "validation": validation_report}
     counts = dataset_counts(job["dataset"])
     if not all(counts):
         return {
