@@ -56,6 +56,7 @@ frontend/ml/model_manifest.json
 frontend/ml/weights/traffic_coco.pt
 frontend/ml/weights/traffic_india.pt
 frontend/ml/weights/anpr_plate.pt
+frontend/ml/weights/anpr_plate.onnx
 frontend/ml/weights/infrastructure.pt
 
 # Docker
@@ -83,3 +84,7 @@ backend/.venv312/
 # Local video processing output and queue
 edge_output/
 edge_event_cache.json
+runs/
+*-results/
+test-videos/
+test-images/traffic-test.jpg

@@ -21,7 +21,9 @@ def main():
                     counts[cls]+=1
                 except Exception: bad.append(f"invalid: {p}:{n}: {line}")
         report[split]={"images":len(imgs),"labels":len(labs),"images_without_label":sum(s not in labs for s in imgs)}
-    report["boxes_per_class"]={str(k):v for k,v in sorted(counts.items())}\n    report["missing_classes"]=[i for i in range(a.classes) if counts[i] == 0]\n    report["errors"]=bad[:100]
+    report["boxes_per_class"]={str(k):v for k,v in sorted(counts.items())}
+    report["missing_classes"]=[i for i in range(a.classes) if counts[i] == 0]
+    report["errors"]=bad[:100]
     print(json.dumps(report,indent=2))
     raise SystemExit(2 if bad else 0)
 if __name__=="__main__":main()
