@@ -3,6 +3,7 @@ from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
 from app.services.road_detector import detect_road_defects, road_model_health
+from app.services.anpr_service import recognize_plate
 
 
 router = APIRouter(prefix="/api/detect", tags=["AI Detection"])
@@ -80,3 +81,21 @@ async def detect_road(
         "detections": detections,
         "timing": timing,
     }
+
+
+@router.post("/anpr")
+async def detect_anpr(file: UploadFile = File(...)):
+    """Prototype ANPR endpoint. Never fabricates a plate when OCR is uncertain."""
+    raw = await file.read(MAX_FILE_SIZE + 1)
+    await file.close()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(raw) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="Image exceeds 5 MB")
+    try:
+        return await run_in_threadpool(recognize_plate, raw)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Upload a valid vehicle/plate image")
+    except Exception:
+        logger.exception("ANPR inference failed")
+        raise HTTPException(status_code=500, detail="ANPR inference failed")
