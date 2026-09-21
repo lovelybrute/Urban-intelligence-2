@@ -68,10 +68,13 @@ class ANPRProcessor:
         self.min_confidence = min_confidence
         self.model = None
         if model_path:
-            if not Path(model_path).is_file():
-                raise FileNotFoundError(f"ANPR weights missing: {model_path}")
-            from ultralytics import YOLO
-            self.model = YOLO(model_path)
+            p = Path(model_path)
+            if p.is_file():
+                try:
+                    from ultralytics import YOLO
+                    self.model = YOLO(str(p))
+                except Exception:
+                    self.model = None
 
     def process_vehicle_crop(
         self,
@@ -96,6 +99,10 @@ class ANPRProcessor:
 
         # Clean string: uppercase alphanumeric only
         cleaned_text = re.sub(r"[^A-Z0-9]", "", raw_text.upper())
+        if cleaned_text.startswith("IND") and len(cleaned_text) >= 8:
+            candidate = cleaned_text[3:]
+            if self.INDIAN_PLATE_REGEX.match(candidate):
+                cleaned_text = candidate
 
         # Validate syntax against official Indian vehicle format
         is_valid = bool(self.INDIAN_PLATE_REGEX.match(cleaned_text))
@@ -140,17 +147,23 @@ class ANPRProcessor:
             plate_crop = frame_crop
             detection_confidence = 0.0
             if self.model is not None:
-                results = self.model(frame_crop, conf=0.35, verbose=False)
-                candidates = [box for result in results for box in result.boxes]
-                if candidates:
-                    best = max(candidates, key=lambda box: float(box.conf[0]))
-                    x1, y1, x2, y2 = [int(value) for value in best.xyxy[0].tolist()]
-                    height, width = frame_crop.shape[:2]
-                    x1, y1 = max(0, x1), max(0, y1)
-                    x2, y2 = min(width, x2), min(height, y2)
-                    if x2 > x1 and y2 > y1:
-                        plate_crop = frame_crop[y1:y2, x1:x2]
-                        detection_confidence = float(best.conf[0])
+                try:
+                    results = self.model(frame_crop, conf=0.20, verbose=False)
+                    candidates = [box for result in results for box in result.boxes]
+                    if candidates:
+                        best = max(candidates, key=lambda box: float(box.conf[0]))
+                        x1, y1, x2, y2 = [int(value) for value in best.xyxy[0].tolist()]
+                        height, width = frame_crop.shape[:2]
+                        # Expand box slightly (5%) to avoid cutting off plate borders
+                        pad_x = int((x2 - x1) * 0.05)
+                        pad_y = int((y2 - y1) * 0.05)
+                        x1, y1 = max(0, x1 - pad_x), max(0, y1 - pad_y)
+                        x2, y2 = min(width, x2 + pad_x), min(height, y2 + pad_y)
+                        if x2 > x1 and y2 > y1:
+                            plate_crop = frame_crop[y1:y2, x1:x2]
+                            detection_confidence = float(best.conf[0])
+                except Exception:
+                    pass
             gray = cv2.cvtColor(plate_crop, cv2.COLOR_BGR2GRAY)
             # Bilateral filter to remove noise while preserving edges
             denoised = cv2.bilateralFilter(gray, 11, 17, 17)
@@ -164,11 +177,8 @@ class ANPRProcessor:
                 import easyocr
                 if not hasattr(self, "_easyocr_reader"):
                     self._easyocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-                # Without trained plate-localizer weights, OCR the original crop
-                # as well as the thresholded image. EasyOCR often performs better
-                # on the original colour crop because it has its own detector.
                 candidates = []
-                for candidate in (plate_crop, thresh):
+                for candidate in (plate_crop, thresh, gray):
                     reads = self._easyocr_reader.readtext(
                         candidate, detail=1,
                         allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
@@ -180,8 +190,6 @@ class ANPRProcessor:
                         candidates.append((text, confidence))
                 if candidates:
                     text, confidence = max(candidates, key=lambda item: item[1])
-                    # EasyOCR's own text-region detection acts as the prototype
-                    # localization signal when custom YOLO plate weights are absent.
                     if detection_confidence <= 0:
                         detection_confidence = confidence
                     return text, detection_confidence, confidence
@@ -193,11 +201,18 @@ class ANPRProcessor:
             try:
                 import pytesseract
                 if _configure_tesseract(pytesseract):
-                    data = pytesseract.image_to_data(thresh, config='--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', output_type=pytesseract.Output.DICT)
-                    tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
-                    text = "".join(t for t, _ in tokens)
-                    confidence = sum(c for _, c in tokens) / (100 * len(tokens)) if tokens else 0.0
-                    return text, detection_confidence, confidence
+                    tess_candidates = []
+                    for img in (plate_crop, thresh, gray):
+                        for psm in ("--psm 7", "--psm 8", "--psm 6"):
+                            data = pytesseract.image_to_data(img, config=f"{psm} -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", output_type=pytesseract.Output.DICT)
+                            tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
+                            if tokens:
+                                text = "".join(t for t, _ in tokens)
+                                conf = sum(c for _, c in tokens) / (100 * len(tokens))
+                                tess_candidates.append((text, conf))
+                    if tess_candidates:
+                        text, confidence = max(tess_candidates, key=lambda item: item[1])
+                        return text, detection_confidence, confidence
             except Exception:
                 pass
         except Exception:

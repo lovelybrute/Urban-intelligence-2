@@ -34,7 +34,7 @@ INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
 
 
 def get_model():
-    global _model, _model_load_ms
+    global _model, _model_load_ms, MODEL_PATH
 
     if YOLO is None:
         raise RuntimeError(
@@ -45,11 +45,18 @@ def get_model():
     if _model is None:
         if torch is not None:
             torch.set_num_threads(max(1, int(os.getenv("TORCH_NUM_THREADS", "1"))))
-        if not MODEL_PATH.exists():
+        if not MODEL_PATH.exists() and not PT_MODEL_PATH.exists():
             raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
 
         load_started = time.perf_counter()
-        _model = YOLO(str(MODEL_PATH))
+        try:
+            _model = YOLO(str(MODEL_PATH))
+        except Exception:
+            if PT_MODEL_PATH.exists() and MODEL_PATH != PT_MODEL_PATH:
+                MODEL_PATH = PT_MODEL_PATH
+                _model = YOLO(str(PT_MODEL_PATH))
+            else:
+                raise
         _model_load_ms = round((time.perf_counter() - load_started) * 1000, 2)
 
     return _model
@@ -57,24 +64,39 @@ def get_model():
 
 def warm_road_model():
     """Initialize the inference backend and run one synthetic frame at startup."""
-    global _model_warmup_ms
+    global _model_warmup_ms, MODEL_PATH, _model
     model = get_model()
     if _model_warmup_ms is None:
         started = time.perf_counter()
         frame = np.zeros((INFERENCE_SIZE, INFERENCE_SIZE, 3), dtype=np.uint8)
-        with _inference_lock:
-            model.predict(
-                source=frame,
-                conf=0.18,
-                verbose=False,
-                imgsz=INFERENCE_SIZE,
-                device="cpu",
-            )
+        try:
+            with _inference_lock:
+                model.predict(
+                    source=frame,
+                    conf=0.18,
+                    verbose=False,
+                    imgsz=INFERENCE_SIZE,
+                    device="cpu",
+                )
+        except Exception:
+            if PT_MODEL_PATH.exists() and MODEL_PATH != PT_MODEL_PATH:
+                MODEL_PATH = PT_MODEL_PATH
+                _model = YOLO(str(PT_MODEL_PATH))
+                with _inference_lock:
+                    _model.predict(
+                        source=frame,
+                        conf=0.18,
+                        verbose=False,
+                        imgsz=INFERENCE_SIZE,
+                        device="cpu",
+                    )
+                model = _model
         _model_warmup_ms = round((time.perf_counter() - started) * 1000, 2)
     return model
 
 
 def detect_road_defects(raw: bytes, confidence: float = 0.18):
+    global MODEL_PATH, _model
     request_started = time.perf_counter()
     preprocess_started = request_started
     try:
@@ -99,14 +121,29 @@ def detect_road_defects(raw: bytes, confidence: float = 0.18):
     # Serialize inference on tiny CPU instances so concurrent scans do not
     # exhaust CPU/RAM or invoke the same model object concurrently.
     inference_started = time.perf_counter()
-    with _inference_lock:
-        results = model.predict(
-            source=frame,
-            conf=confidence,
-            verbose=False,
-            imgsz=INFERENCE_SIZE,
-            device="cpu",
-        )
+    try:
+        with _inference_lock:
+            results = model.predict(
+                source=frame,
+                conf=confidence,
+                verbose=False,
+                imgsz=INFERENCE_SIZE,
+                device="cpu",
+            )
+    except Exception:
+        if PT_MODEL_PATH.exists() and MODEL_PATH != PT_MODEL_PATH:
+            MODEL_PATH = PT_MODEL_PATH
+            _model = YOLO(str(PT_MODEL_PATH))
+            with _inference_lock:
+                results = _model.predict(
+                    source=frame,
+                    conf=confidence,
+                    verbose=False,
+                    imgsz=INFERENCE_SIZE,
+                    device="cpu",
+                )
+        else:
+            raise
     inference_ms = (time.perf_counter() - inference_started) * 1000
 
     detections = []

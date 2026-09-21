@@ -15,13 +15,15 @@ _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 ANPRProcessor = _mod.ANPRProcessor
 
-WEIGHTS=ROOT/"frontend"/"ml"/"weights"/"anpr_plate.pt"
-_processor=None
+WEIGHTS_PT = ROOT / "frontend" / "ml" / "weights" / "anpr_plate.pt"
+WEIGHTS_ONNX = ROOT / "frontend" / "ml" / "weights" / "anpr_plate.onnx"
+WEIGHTS = WEIGHTS_PT if WEIGHTS_PT.is_file() else (WEIGHTS_ONNX if WEIGHTS_ONNX.is_file() else None)
+_processor = None
 
 def get_processor():
     global _processor
     if _processor is None:
-        _processor=ANPRProcessor(model_path=str(WEIGHTS) if WEIGHTS.is_file() else None)
+        _processor = ANPRProcessor(model_path=str(WEIGHTS) if WEIGHTS else None)
     return _processor
 
 def recognize_plate(raw:bytes):
