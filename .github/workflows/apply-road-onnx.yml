@@ -40,7 +40,16 @@ jobs:
               raise SystemExit(f"Missing trained checkpoint: {src}")
 
           model = YOLO(str(src))
-          exported = Path(model.export(format="onnx", imgsz=320, simplify=True, dynamic=False))
+          exported = Path(model.export(format="onnx", imgsz=320, simplify=True, dynamic=False, opset=17))
+
+          # Render ONNX Runtime currently supports ONNX IR <= 11. Newer ONNX
+          # exporters may stamp IR 14 even when the graph uses a compatible opset.
+          import onnx
+          exported_model = onnx.load(str(exported))
+          if exported_model.ir_version > 11:
+              exported_model.ir_version = 11
+              onnx.save(exported_model, str(exported))
+          print(f"ONNX IR version: {onnx.load(str(exported)).ir_version}")
           target = src.with_suffix(".onnx")
           if exported.resolve() != target.resolve():
               target.write_bytes(exported.read_bytes())
