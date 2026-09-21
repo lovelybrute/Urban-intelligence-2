@@ -12,7 +12,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from app.services.road_detector import get_model, MODEL_PATH
+from app.services.road_detector import warm_road_model, MODEL_PATH
 
 from app.core.config import settings
 from app.core.security import get_current_user, require_write
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     # uploaded scan pay the model initialization cost.
     if MODEL_PATH.exists():
         try:
-            get_model()
+            warm_road_model()
             logger.info(f"✅ Road AI warmed: {MODEL_PATH.name}")
         except Exception as exc:
             # Keep non-AI platform routes available if model initialization
