@@ -154,6 +154,8 @@ export interface RoadDetection {
   class_name: string;
   confidence: number;
   bbox: RoadDetectionBox;
+  detection_method?: string;
+  requires_manual_verification?: boolean;
 }
 
 export interface RoadDetectionResult {

@@ -29,7 +29,7 @@ def detection_health():
 @router.post("/road")
 async def detect_road(
     file: UploadFile = File(...),
-    confidence: float = 0.18,
+    confidence: float = 0.10,
 ):
     if confidence < 0.01 or confidence > 1.0:
         raise HTTPException(

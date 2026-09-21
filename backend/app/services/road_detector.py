@@ -8,6 +8,11 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 try:
+    import cv2
+except ImportError:  # pragma: no cover - OpenCV is optional in some edge installs.
+    cv2 = None
+
+try:
     import torch
     from ultralytics import YOLO
 except ImportError:  # Optional: edge nodes normally perform GPU inference.
@@ -28,9 +33,11 @@ _model = None
 _inference_lock = threading.Lock()
 _model_load_ms = None
 _model_warmup_ms = None
-# The exported ONNX model uses a fixed 320px input. This preserves substantially
-# more small-road detail than the previous 160px deployment.
-INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
+# Benchmarking on RDD-style pothole images showed 640px materially improves
+# pothole box recall versus 320px while keeping warm CPU inference practical.
+INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "640"))
+PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", str(INFERENCE_SIZE)))
+ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.50"))
 
 
 def get_model():
@@ -97,7 +104,7 @@ def warm_road_model():
     return model
 
 
-def detect_road_defects(raw: bytes, confidence: float = 0.18):
+def detect_road_defects(raw: bytes, confidence: float = 0.10):
     global MODEL_PATH, _model
     request_started = time.perf_counter()
     preprocess_started = request_started
@@ -107,7 +114,7 @@ def detect_road_defects(raw: bytes, confidence: float = 0.18):
             image = image.convert("RGB")
             original_width, original_height = image.size
             # Bound input size before NumPy conversion to reduce RAM/CPU pressure.
-            image.thumbnail((640, 640))
+            image.thumbnail((PREPROCESS_MAX_SIDE, PREPROCESS_MAX_SIDE))
             inference_width, inference_height = image.size
             scale_x = original_width / inference_width
             scale_y = original_height / inference_height
@@ -178,14 +185,111 @@ def detect_road_defects(raw: bytes, confidence: float = 0.18):
                 }
             )
 
+    postprocess_started = time.perf_counter()
+    detections = _nms_by_class(detections, ROAD_NMS_IOU)
+    waterlogging_started = time.perf_counter()
+    detections.extend(_detect_waterlogging(frame, scale_x, scale_y))
+    waterlogging_ms = (time.perf_counter() - waterlogging_started) * 1000
+    postprocess_ms = (time.perf_counter() - postprocess_started) * 1000
+
     total_ms = (time.perf_counter() - request_started) * 1000
     timing = {
         "preprocess_ms": round(preprocess_ms, 2),
         "model_ready_ms": round(model_ready_ms, 2),
         "inference_ms": round(inference_ms, 2),
+        "waterlogging_ms": round(waterlogging_ms, 2),
+        "postprocess_ms": round(postprocess_ms, 2),
         "total_ms": round(total_ms, 2),
     }
     return detections, timing
+
+
+def _box_iou(a, b):
+    ax1, ay1, ax2, ay2 = a["bbox"]["x1"], a["bbox"]["y1"], a["bbox"]["x2"], a["bbox"]["y2"]
+    bx1, by1, bx2, by2 = b["bbox"]["x1"], b["bbox"]["y1"], b["bbox"]["x2"], b["bbox"]["y2"]
+    ix1, iy1 = max(ax1, bx1), max(ay1, by1)
+    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+    inter = max(0, ix2 - ix1) * max(0, iy2 - iy1)
+    if inter <= 0:
+        return 0.0
+    area_a = max(0, ax2 - ax1) * max(0, ay2 - ay1)
+    area_b = max(0, bx2 - bx1) * max(0, by2 - by1)
+    return inter / max(1e-6, area_a + area_b - inter)
+
+
+def _nms_by_class(detections, threshold):
+    kept = []
+    for class_name in sorted({d["class_name"] for d in detections}):
+        class_dets = sorted(
+            [d for d in detections if d["class_name"] == class_name],
+            key=lambda item: item["confidence"],
+            reverse=True,
+        )
+        while class_dets:
+            best = class_dets.pop(0)
+            kept.append(best)
+            class_dets = [d for d in class_dets if _box_iou(best, d) < threshold]
+    return sorted(kept, key=lambda item: item["confidence"], reverse=True)
+
+
+def _detect_waterlogging(frame_rgb, scale_x, scale_y):
+    if cv2 is None:
+        return []
+    height, width = frame_rgb.shape[:2]
+    if height < 40 or width < 40:
+        return []
+
+    bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    lower_y = int(height * 0.25)
+    roi = hsv[lower_y:, :]
+
+    blue_gray_water = cv2.inRange(roi, (80, 10, 35), (135, 160, 245))
+    muddy_water = cv2.inRange(roi, (5, 25, 35), (45, 255, 255))
+    mask = cv2.morphologyEx(blue_gray_water | muddy_water, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((11, 11), np.uint8))
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    detections = []
+    image_area = max(1, height * width)
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        area_ratio = area / image_area
+        if area_ratio < 0.12 or area_ratio > 0.55:
+            continue
+        x, y, w, h = cv2.boundingRect(contour)
+        if w < 20 or h < 12:
+            continue
+        aspect = w / max(1, h)
+        if aspect < 1.3:
+            continue
+        y += lower_y
+        center_y = y + h / 2
+        if center_y < height * 0.35 or center_y > height * 0.88:
+            continue
+        crop = hsv[y : y + h, x : x + w]
+        saturation = float(np.median(crop[:, :, 1])) if crop.size else 255.0
+        hue = float(np.median(crop[:, :, 0])) if crop.size else 180.0
+        is_muddy = 5 <= hue <= 45
+        if not is_muddy and saturation > 140:
+            continue
+        confidence = min(0.72, 0.35 + area_ratio * 6)
+        detections.append(
+            {
+                "class_id": 5,
+                "class_name": "waterlogging",
+                "confidence": round(float(confidence), 4),
+                "bbox": {
+                    "x1": round(float(x) * scale_x, 2),
+                    "y1": round(float(y) * scale_y, 2),
+                    "x2": round(float(x + w) * scale_x, 2),
+                    "y2": round(float(y + h) * scale_y, 2),
+                },
+                "detection_method": "COMPUTER-VISION PROTOTYPE",
+                "requires_manual_verification": True,
+            }
+        )
+    return _nms_by_class(detections, 0.30)
 
 
 def road_model_health():
@@ -196,6 +300,7 @@ def road_model_health():
         "ultralytics_ready": YOLO is not None,
         "engine": "onnxruntime" if MODEL_PATH.suffix == ".onnx" else "pytorch",
         "inference_size": INFERENCE_SIZE,
+        "preprocess_max_side": PREPROCESS_MAX_SIDE,
         "device": "cpu",
         "model_load_ms": _model_load_ms,
         "model_warmup_ms": _model_warmup_ms,

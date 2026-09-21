@@ -118,7 +118,7 @@ export const RoadView = ({
     setResult(null);
 
     try {
-      const response = await apiClient.detectRoad(file, 0.25);
+      const response = await apiClient.detectRoad(file, 0.10);
       setResult(response);
     } catch (err) {
       console.error("Road AI scan failed:", err);
