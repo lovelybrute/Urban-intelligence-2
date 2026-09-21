@@ -60,6 +60,25 @@ async def test_auth_login():
 
 
 @pytest.mark.asyncio
+async def test_auth_refresh_accepts_json_body():
+    """Verify refresh endpoint accepts the refresh token in JSON payloads."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as ac:
+        login = await ac.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "admin123"}
+        )
+        assert login.status_code == 200, login.text
+        refresh_token = login.json()["refresh_token"]
+
+        response = await ac.post("/api/auth/refresh", json={"refresh_token": refresh_token})
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert data["username"] == "admin"
+
+
+@pytest.mark.asyncio
 async def test_get_buses():
     """Verify buses list endpoint."""
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test", headers=auth_headers()) as ac:

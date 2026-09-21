@@ -1,7 +1,7 @@
 """
 Urban Intelligence Platform - Auth API Routes
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
@@ -86,9 +86,28 @@ async def get_me(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
-    """Refresh an access token."""
-    payload = decode_token(refresh_token)
+async def refresh_token(
+    refresh_token: str | None = None,
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Refresh an access token.
+
+    Accepts the refresh token either as a query parameter or in a JSON body so
+    clients can follow the standard bearer-token contract without breaking
+    compatibility with existing callers.
+    """
+    token = refresh_token
+    if token is None and request is not None:
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        token = payload.get("refresh_token") if isinstance(payload, dict) else None
+    if not token:
+        raise HTTPException(status_code=400, detail="Refresh token is required")
+
+    payload = decode_token(token)
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=400, detail="Invalid refresh token")
 
