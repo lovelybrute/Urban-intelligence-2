@@ -186,7 +186,8 @@ class ANPRProcessor:
                         detection_confidence = confidence
                     return text, detection_confidence, confidence
             except Exception as exc:
-                print(f"EasyOCR ANPR failed: {exc}")
+                import logging
+                logging.getLogger("uvicorn.error").exception("EasyOCR ANPR failed: %s", exc)
 
             # Local fallback when Tesseract happens to be installed.
             try:
