@@ -12,12 +12,16 @@ import {
 } from "../types";
 
 const configuredApiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-// FastAPI routes are mounted under /api. Production provides the Render host.
-const API_BASE = configuredApiBase
-  ? configuredApiBase.endsWith("/api")
-    ? configuredApiBase
-    : `${configuredApiBase}/api`
-  : "/api";
+// In production, keep browser requests same-origin and let Vercel proxy /api
+// to Render. This avoids cross-origin gateway/CORS failures during cold starts.
+// Local development can still use VITE_API_BASE_URL or Vite's /api proxy.
+const API_BASE = import.meta.env.PROD
+  ? "/api"
+  : configuredApiBase
+    ? configuredApiBase.endsWith("/api")
+      ? configuredApiBase
+      : `${configuredApiBase}/api`
+    : "/api";
 const requestedMode = new URLSearchParams(window.location.search).get("mode");
 export const DEMO_MODE =
   requestedMode === "demo" ||
