@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
 from app.services.road_detector import detect_road_defects, road_model_health
@@ -62,6 +63,15 @@ async def detect_road(
         raise HTTPException(
             status_code=503,
             detail=str(exc),
+        )
+    except Exception:
+        # Keep unexpected inference failures inside FastAPI's handled response
+        # path. This preserves CORS headers, so the browser receives a useful
+        # JSON error instead of reporting a misleading network failure.
+        logger.exception("Road AI inference failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Road AI inference failed",
         )
 
     return {

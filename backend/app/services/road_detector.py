@@ -47,8 +47,12 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
         with Image.open(BytesIO(raw)) as image:
             image.load()
             image = image.convert("RGB")
+            original_width, original_height = image.size
             # Bound input size before NumPy conversion to reduce RAM/CPU pressure.
             image.thumbnail((640, 640))
+            inference_width, inference_height = image.size
+            scale_x = original_width / inference_width
+            scale_y = original_height / inference_height
             frame = np.array(image)
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")

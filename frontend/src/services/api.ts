@@ -80,6 +80,39 @@ export async function request(path: string, options: RequestInit = {}) {
   }
   return response;
 }
+
+const wait = (milliseconds: number) =>
+  new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+
+async function waitForDetectionBackend(): Promise<void> {
+  const deadline = Date.now() + 120000;
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`${API_BASE}/detect/health`, {
+        signal: AbortSignal.timeout(20000),
+      });
+
+      if (response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const health = await response.json();
+          if (health?.road_model_ready && health?.ultralytics_ready) return;
+        }
+      }
+    } catch {
+      // Render's free service may reject requests while its instance starts.
+      // Retry until the bounded wake-up deadline instead of surfacing a false
+      // "backend unreachable" message immediately.
+    }
+
+    await wait(4000);
+  }
+
+  throw new Error(
+    "Road AI service did not finish waking up. Please try the scan once more.",
+  );
+}
 export async function getEvidence(id: number) {
   const response = await request(`/events/${id}/evidence`);
   return URL.createObjectURL(await response.blob());
@@ -779,24 +812,37 @@ const BACKEND_SCENARIOS = [
 ];
 
 export const apiClient = {
-    detectRoad: async (
+  detectRoad: async (
     file: File,
     confidence = 0.25,
   ): Promise<RoadDetectionResult> => {
     // Send the image directly. A separate health preflight can fail in the
     // browser even when the inference endpoint is healthy, and it doubles the
     // number of cross-origin requests to the sleeping Render service.
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await request(
-      `/detect/road?confidence=${encodeURIComponent(confidence)}`,
-      {
+    const runScan = () => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return request(`/detect/road?confidence=${encodeURIComponent(confidence)}`, {
         method: "POST",
         body: formData,
         signal: AbortSignal.timeout(180000),
-      },
-    );
+      });
+    };
+
+    let response: Response;
+    try {
+      response = await runScan();
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.startsWith("Backend is unreachable")
+      ) {
+        throw error;
+      }
+
+      await waitForDetectionBackend();
+      response = await runScan();
+    }
 
     return response.json();
   },
