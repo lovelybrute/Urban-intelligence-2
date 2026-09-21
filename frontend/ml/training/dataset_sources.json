@@ -1,0 +1,48 @@
+{
+  "traffic_india": {
+    "name": "UVH-26",
+    "url": "https://www.iisc.ac.in/events/aim-iisc-announces-public-release-of-uvh-26-dataset-and-vision-models-for-indian-urban-traffic/",
+    "use": [
+      "auto_rickshaw",
+      "Indian vehicle classes"
+    ],
+    "status": "preferred_public_source",
+    "note": "26646 Bengaluru traffic images; 1.8M boxes across 14 India-specific vehicle classes. Verify download terms before ingestion."
+  },
+  "traffic_india_alternative": {
+    "name": "Indian Road Driving Dataset",
+    "url": "https://huggingface.co/datasets/thirdeyelabs/indian-road-dataset",
+    "use": [
+      "person",
+      "car",
+      "truck",
+      "bus",
+      "motorcycle",
+      "bicycle",
+      "auto_rickshaw",
+      "tracking"
+    ],
+    "status": "candidate_needs_license_review",
+    "note": "Large Indian dashcam dataset; annotations are machine-generated, so validate before training."
+  },
+  "anpr": {
+    "name": "Indian Vehicle License Plate Localization",
+    "url": "https://huggingface.co/datasets/thundarstrom/indian-license-plate-detection",
+    "use": [
+      "license_plate"
+    ],
+    "status": "approved_candidate_cc_by_4_0",
+    "note": "3742 deduplicated Indian vehicle images with YOLO localization labels and train/val/test splits."
+  },
+  "emergency": {
+    "name": "Indian emergency vehicles",
+    "url": "https://universe.roboflow.com/superx/indian-emergency-vehicles-e1vdu",
+    "use": [
+      "ambulance",
+      "police",
+      "firetruck"
+    ],
+    "status": "approved_candidate_cc_by_4_0",
+    "note": "8227 images; review class mapping before merging into emergency_vehicle."
+  }
+}
