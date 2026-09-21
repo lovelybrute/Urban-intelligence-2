@@ -18,7 +18,11 @@ except ImportError:  # Optional: edge nodes normally perform GPU inference.
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PT_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
 ONNX_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.onnx"
-MODEL_PATH = ONNX_MODEL_PATH if ONNX_MODEL_PATH.exists() else PT_MODEL_PATH
+# Prefer the validated PyTorch checkpoint in cloud deployment. The current ONNX
+# export is incompatible with Render's ONNX Runtime graph support (Split
+# num_outputs), so ONNX remains opt-in until a compatible export is validated.
+USE_ONNX = os.getenv("ROAD_AI_USE_ONNX", "0").strip().lower() in {"1", "true", "yes"}
+MODEL_PATH = ONNX_MODEL_PATH if USE_ONNX and ONNX_MODEL_PATH.exists() else PT_MODEL_PATH
 
 _model = None
 _inference_lock = threading.Lock()
