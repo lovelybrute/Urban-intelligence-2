@@ -4,7 +4,7 @@ from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
 from app.services.road_detector import detect_road_defects, road_model_health
-from app.services.anpr_service import recognize_plate
+from app.services.anpr_service import anpr_model_health, recognize_plate
 from app.services.urban_vision import (
     analyze_infrastructure,
     analyze_safety,
@@ -23,6 +23,7 @@ def detection_health():
     return {
         **road_model_health(),
         **urban_detection_health(),
+        **anpr_model_health(),
     }
 
 
