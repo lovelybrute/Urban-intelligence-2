@@ -47,7 +47,10 @@ def test_detection_scales_boxes_back_to_original_image(monkeypatch):
     monkeypatch.setattr(road_detector, "get_model", lambda: _Model())
     monkeypatch.setattr(road_detector, "INFERENCE_SIZE", 160)
 
-    detections = road_detector.detect_road_defects(raw.getvalue(), 0.25)
+    detections, timing = road_detector.detect_road_defects(raw.getvalue(), 0.25)
+
+    assert set(timing) == {"preprocess_ms", "model_ready_ms", "inference_ms", "total_ms"}
+    assert timing["total_ms"] >= 0
 
     assert detections == [
         {
