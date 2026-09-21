@@ -23,6 +23,7 @@ MODEL_PATH = ONNX_MODEL_PATH if ONNX_MODEL_PATH.exists() else PT_MODEL_PATH
 _model = None
 _inference_lock = threading.Lock()
 _model_load_ms = None
+_model_warmup_ms = None
 # The exported ONNX model uses a fixed 320px input. This preserves substantially
 # more small-road detail than the previous 160px deployment.
 INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
@@ -48,6 +49,25 @@ def get_model():
         _model_load_ms = round((time.perf_counter() - load_started) * 1000, 2)
 
     return _model
+
+
+def warm_road_model():
+    """Initialize the inference backend and run one synthetic frame at startup."""
+    global _model_warmup_ms
+    model = get_model()
+    if _model_warmup_ms is None:
+        started = time.perf_counter()
+        frame = np.zeros((INFERENCE_SIZE, INFERENCE_SIZE, 3), dtype=np.uint8)
+        with _inference_lock:
+            model.predict(
+                source=frame,
+                conf=0.18,
+                verbose=False,
+                imgsz=INFERENCE_SIZE,
+                device="cpu",
+            )
+        _model_warmup_ms = round((time.perf_counter() - started) * 1000, 2)
+    return model
 
 
 def detect_road_defects(raw: bytes, confidence: float = 0.18):
@@ -135,4 +155,5 @@ def road_model_health():
         "inference_size": INFERENCE_SIZE,
         "device": "cpu",
         "model_load_ms": _model_load_ms,
+        "model_warmup_ms": _model_warmup_ms,
     }
