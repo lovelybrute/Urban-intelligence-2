@@ -818,7 +818,7 @@ const BACKEND_SCENARIOS = [
 export const apiClient = {
   detectRoad: async (
     file: File,
-    confidence = 0.25,
+    confidence = 0.18,
   ): Promise<RoadDetectionResult> => {
     // Wake Render with a lightweight GET before starting CPU-heavy inference.
     // Sending the multipart POST to a sleeping free instance can make the
