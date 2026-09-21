@@ -49,7 +49,14 @@ def test_detection_scales_boxes_back_to_original_image(monkeypatch):
 
     detections, timing = road_detector.detect_road_defects(raw.getvalue(), 0.25)
 
-    assert set(timing) == {"preprocess_ms", "model_ready_ms", "inference_ms", "total_ms"}
+    assert set(timing) >= {
+        "preprocess_ms",
+        "model_ready_ms",
+        "inference_ms",
+        "waterlogging_ms",
+        "postprocess_ms",
+        "total_ms",
+    }
     assert timing["total_ms"] >= 0
 
     assert detections == [
