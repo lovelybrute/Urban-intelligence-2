@@ -19,7 +19,10 @@ MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt
 
 _model = None
 _inference_lock = threading.Lock()
-INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
+# Render's free CPU is heavily throttled. A 160px inference keeps the deployed
+# scanner inside browser/proxy request limits; edge hardware can override this
+# with ROAD_AI_IMGSZ for higher-resolution inference.
+INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "160"))
 
 
 def get_model():

@@ -816,9 +816,11 @@ export const apiClient = {
     file: File,
     confidence = 0.25,
   ): Promise<RoadDetectionResult> => {
-    // Send the image directly. A separate health preflight can fail in the
-    // browser even when the inference endpoint is healthy, and it doubles the
-    // number of cross-origin requests to the sleeping Render service.
+    // Wake Render with a lightweight GET before starting CPU-heavy inference.
+    // Sending the multipart POST to a sleeping free instance can make the
+    // gateway drop the browser connection while inference continues unseen.
+    await waitForDetectionBackend();
+
     const runScan = () => {
       const formData = new FormData();
       formData.append("file", file);
@@ -829,20 +831,7 @@ export const apiClient = {
       });
     };
 
-    let response: Response;
-    try {
-      response = await runScan();
-    } catch (error) {
-      if (
-        !(error instanceof Error) ||
-        !error.message.startsWith("Backend is unreachable")
-      ) {
-        throw error;
-      }
-
-      await waitForDetectionBackend();
-      response = await runScan();
-    }
+    const response = await runScan();
 
     return response.json();
   },

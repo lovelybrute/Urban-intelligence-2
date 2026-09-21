@@ -35,7 +35,7 @@ class _Result:
 class _Model:
     def predict(self, **kwargs):
         assert kwargs["source"].shape == (640, 640, 3)
-        assert kwargs["imgsz"] == road_detector.INFERENCE_SIZE
+        assert kwargs["imgsz"] == 160
         return [_Result()]
 
 
@@ -45,7 +45,7 @@ def test_detection_scales_boxes_back_to_original_image(monkeypatch):
     image.save(raw, format="JPEG")
 
     monkeypatch.setattr(road_detector, "get_model", lambda: _Model())
-    monkeypatch.setattr(road_detector, "INFERENCE_SIZE", 320)
+    monkeypatch.setattr(road_detector, "INFERENCE_SIZE", 160)
 
     detections = road_detector.detect_road_defects(raw.getvalue(), 0.25)
 
