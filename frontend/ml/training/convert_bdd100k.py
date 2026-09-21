@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse,json,shutil
 from pathlib import Path
-MAP={"person":0,"car":1,"motorcycle":2,"bus":3,"truck":4,"bike":5,"bicycle":5}
+# Must match frontend/ml/configs/yolo_traffic.yaml exactly.\n# BDD100K has no native auto-rickshaw/emergency classes; those require reviewed custom data.\nMAP={"car":0,"bus":1,"truck":2,"motorcycle":3,"bike":5,"bicycle":5,"person":7}
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("labels",type=Path);ap.add_argument("images",type=Path)
