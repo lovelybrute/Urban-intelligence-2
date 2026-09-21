@@ -15,14 +15,15 @@ except ImportError:  # Optional: edge nodes normally perform GPU inference.
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
+PT_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
+ONNX_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.onnx"
+MODEL_PATH = ONNX_MODEL_PATH if ONNX_MODEL_PATH.exists() else PT_MODEL_PATH
 
 _model = None
 _inference_lock = threading.Lock()
-# Render's free CPU is heavily throttled. A 160px inference keeps the deployed
-# scanner inside browser/proxy request limits; edge hardware can override this
-# with ROAD_AI_IMGSZ for higher-resolution inference.
-INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "160"))
+# The exported ONNX model uses a fixed 320px input. This preserves substantially
+# more small-road detail than the previous 160px deployment.
+INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
 
 
 def get_model():
@@ -45,7 +46,7 @@ def get_model():
     return _model
 
 
-def detect_road_defects(raw: bytes, confidence: float = 0.25):
+def detect_road_defects(raw: bytes, confidence: float = 0.18):
     try:
         with Image.open(BytesIO(raw)) as image:
             image.load()
@@ -112,6 +113,7 @@ def road_model_health():
         "road_model_ready": MODEL_PATH.exists(),
         "weight": MODEL_PATH.name,
         "ultralytics_ready": YOLO is not None,
+        "engine": "onnxruntime" if MODEL_PATH.suffix == ".onnx" else "pytorch",
         "inference_size": INFERENCE_SIZE,
         "device": "cpu",
     }
