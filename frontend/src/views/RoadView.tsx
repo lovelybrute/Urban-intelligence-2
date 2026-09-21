@@ -159,6 +159,12 @@ export const RoadView = ({
       : 0;
 
   const detectionCount = result?.detection_count ?? 0;
+  const isPrototypeWaterlogging = (
+    detection: RoadDetectionResult["detections"][number],
+  ) =>
+    detection.class_name === "waterlogging" &&
+    (detection.requires_manual_verification === true ||
+      /prototype|heuristic/i.test(detection.detection_method ?? ""));
 
   return (
     <div
@@ -492,8 +498,9 @@ export const RoadView = ({
                             fontWeight: 900,
                           }}
                         >
-                          {detection.class_name.replace(/_/g, " ")}{" "}
-                          {Math.round(detection.confidence * 100)}%
+                          {isPrototypeWaterlogging(detection)
+                            ? `WATERLOGGING · Heuristic score: ${Math.round(detection.confidence * 100)}%`
+                            : `${detection.class_name.replace(/_/g, " ")} ${Math.round(detection.confidence * 100)}%`}
                         </span>
                       </div>
                     );
@@ -730,7 +737,9 @@ export const RoadView = ({
                           textTransform: "capitalize",
                         }}
                       >
-                        {detection.class_name.replace(/_/g, " ")}
+                        {isPrototypeWaterlogging(detection)
+                          ? "WATERLOGGING"
+                          : detection.class_name.replace(/_/g, " ")}
                       </div>
 
                       <div
@@ -741,7 +750,17 @@ export const RoadView = ({
                           fontSize: "0.75rem",
                         }}
                       >
-                        {(detection.confidence * 100).toFixed(1)}% confidence
+                        {isPrototypeWaterlogging(detection) ? (
+                          <>
+                            <div>Prototype detection</div>
+                            <div>
+                              Heuristic score: {Math.round(detection.confidence * 100)}%
+                            </div>
+                            <div>Manual verification required</div>
+                          </>
+                        ) : (
+                          `${(detection.confidence * 100).toFixed(1)}% confidence`
+                        )}
                       </div>
                     </div>
                   ))
