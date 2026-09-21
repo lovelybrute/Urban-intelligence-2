@@ -2,6 +2,7 @@ from pathlib import Path
 from io import BytesIO
 import os
 import threading
+import time
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
@@ -21,13 +22,14 @@ MODEL_PATH = ONNX_MODEL_PATH if ONNX_MODEL_PATH.exists() else PT_MODEL_PATH
 
 _model = None
 _inference_lock = threading.Lock()
+_model_load_ms = None
 # The exported ONNX model uses a fixed 320px input. This preserves substantially
 # more small-road detail than the previous 160px deployment.
 INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "320"))
 
 
 def get_model():
-    global _model
+    global _model, _model_load_ms
 
     if YOLO is None:
         raise RuntimeError(
@@ -41,12 +43,16 @@ def get_model():
         if not MODEL_PATH.exists():
             raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
 
+        load_started = time.perf_counter()
         _model = YOLO(str(MODEL_PATH))
+        _model_load_ms = round((time.perf_counter() - load_started) * 1000, 2)
 
     return _model
 
 
 def detect_road_defects(raw: bytes, confidence: float = 0.18):
+    request_started = time.perf_counter()
+    preprocess_started = request_started
     try:
         with Image.open(BytesIO(raw)) as image:
             image.load()
@@ -61,10 +67,14 @@ def detect_road_defects(raw: bytes, confidence: float = 0.18):
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")
 
+    preprocess_ms = (time.perf_counter() - preprocess_started) * 1000
+    model_started = time.perf_counter()
     model = get_model()
+    model_ready_ms = (time.perf_counter() - model_started) * 1000
 
     # Serialize inference on tiny CPU instances so concurrent scans do not
     # exhaust CPU/RAM or invoke the same model object concurrently.
+    inference_started = time.perf_counter()
     with _inference_lock:
         results = model.predict(
             source=frame,
@@ -73,6 +83,7 @@ def detect_road_defects(raw: bytes, confidence: float = 0.18):
             imgsz=INFERENCE_SIZE,
             device="cpu",
         )
+    inference_ms = (time.perf_counter() - inference_started) * 1000
 
     detections = []
 
@@ -104,7 +115,14 @@ def detect_road_defects(raw: bytes, confidence: float = 0.18):
                 }
             )
 
-    return detections
+    total_ms = (time.perf_counter() - request_started) * 1000
+    timing = {
+        "preprocess_ms": round(preprocess_ms, 2),
+        "model_ready_ms": round(model_ready_ms, 2),
+        "inference_ms": round(inference_ms, 2),
+        "total_ms": round(total_ms, 2),
+    }
+    return detections, timing
 
 
 def road_model_health():
@@ -116,4 +134,5 @@ def road_model_health():
         "engine": "onnxruntime" if MODEL_PATH.suffix == ".onnx" else "pytorch",
         "inference_size": INFERENCE_SIZE,
         "device": "cpu",
+        "model_load_ms": _model_load_ms,
     }
