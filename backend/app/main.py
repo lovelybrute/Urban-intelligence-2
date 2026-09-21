@@ -12,6 +12,8 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from app.services.road_detector import get_model, MODEL_PATH
+
 from app.core.config import settings
 from app.core.security import get_current_user, require_write
 from app.db.session import init_db, close_db, async_session
@@ -50,6 +52,17 @@ async def lifespan(app: FastAPI):
     # Initialize database
     await init_db()
     logger.info("✅ Database initialized")
+
+    # Load the road model during service startup instead of making the first
+    # uploaded scan pay the model initialization cost.
+    if MODEL_PATH.exists():
+        try:
+            get_model()
+            logger.info(f"✅ Road AI warmed: {MODEL_PATH.name}")
+        except Exception as exc:
+            # Keep non-AI platform routes available if model initialization
+            # fails; /api/detect/health will expose readiness for diagnosis.
+            logger.warning(f"⚠️ Road AI warm-up failed: {exc}")
 
     # Production safety checks
     if settings.APP_ENV == "production":
