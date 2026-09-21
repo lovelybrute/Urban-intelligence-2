@@ -44,7 +44,7 @@ async def detect_road(
     try:
         # Road-model inference is CPU-heavy. Run it outside the async
         # event loop so health/docs/API requests stay responsive during inference.
-        detections = await run_in_threadpool(
+        detections, timing = await run_in_threadpool(
             detect_road_defects,
             raw,
             confidence,
@@ -78,4 +78,5 @@ async def detect_road(
         "model": road_model_health()["weight"],
         "detection_count": len(detections),
         "detections": detections,
+        "timing": timing,
     }
