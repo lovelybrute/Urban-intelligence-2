@@ -164,17 +164,29 @@ class ANPRProcessor:
                 import easyocr
                 if not hasattr(self, "_easyocr_reader"):
                     self._easyocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-                reads = self._easyocr_reader.readtext(
-                    thresh, detail=1,
-                    allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-                    paragraph=False,
-                )
-                if reads:
-                    text = "".join(str(item[1]).strip() for item in reads)
-                    confidence = sum(float(item[2]) for item in reads) / len(reads)
+                # Without trained plate-localizer weights, OCR the original crop
+                # as well as the thresholded image. EasyOCR often performs better
+                # on the original colour crop because it has its own detector.
+                candidates = []
+                for candidate in (plate_crop, thresh):
+                    reads = self._easyocr_reader.readtext(
+                        candidate, detail=1,
+                        allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+                        paragraph=False,
+                    )
+                    if reads:
+                        text = "".join(str(item[1]).strip() for item in reads)
+                        confidence = sum(float(item[2]) for item in reads) / len(reads)
+                        candidates.append((text, confidence))
+                if candidates:
+                    text, confidence = max(candidates, key=lambda item: item[1])
+                    # EasyOCR's own text-region detection acts as the prototype
+                    # localization signal when custom YOLO plate weights are absent.
+                    if detection_confidence <= 0:
+                        detection_confidence = confidence
                     return text, detection_confidence, confidence
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"EasyOCR ANPR failed: {exc}")
 
             # Local fallback when Tesseract happens to be installed.
             try:
