@@ -66,6 +66,7 @@ class TrafficProcessor:
         self.next_track_id = 1001
         self.active_tracks: Dict[int, TrackedVehicle] = {}
         self.frame_count = 0
+        self.bytetrack_available = True
         self.last_clean_time = time.time() if 'time' in globals() else 0.0
 
     def process_frame(
@@ -138,7 +139,18 @@ class TrafficProcessor:
         if self.model is None:
             self.active_tracks = {}
             return []
-        results = self.model.track(frame_array, persist=True, tracker="bytetrack.yaml", conf=self.confidence_threshold, verbose=False)
+        try:
+            if not self.bytetrack_available:
+                raise ModuleNotFoundError("lap")
+            results = self.model.track(frame_array, persist=True, tracker="bytetrack.yaml", conf=self.confidence_threshold, verbose=False)
+        except ModuleNotFoundError:
+            self.bytetrack_available = False
+            self.status = "YOLO DETECTOR LOADED / CENTROID TRACKING FALLBACK"
+            # ByteTrack depends on the optional lap package. Keep the prototype
+            # usable in offline demo environments by falling back to centroid
+            # matching over per-frame YOLO detections.
+            results = self.model.predict(frame_array, conf=self.confidence_threshold, verbose=False)
+            return self._track_from_detections(results)
         current = {}
         for result in results:
             for box in result.boxes:
@@ -155,6 +167,49 @@ class TrafficProcessor:
                 current[tid] = TrackedVehicle(track_id=tid, vehicle_class=name, confidence=float(box.conf[0]),
                     bbox=bbox, speed_kmh=None, trajectory=((old.trajectory if old else []) + [[(x1+x2)/2, (y1+y2)/2]])[-30:],
                     frames_tracked=(old.frames_tracked+1 if old else 1))
+        self.active_tracks = current
+        return list(current.values())
+
+    def _track_from_detections(self, results) -> List[TrackedVehicle]:
+        current = {}
+        used_old = set()
+        for result in results:
+            if result.boxes is None:
+                continue
+            for box in result.boxes:
+                name = str(result.names[int(box.cls[0])])
+                x1, y1, x2, y2 = box.xyxyn[0].tolist()
+                bbox = [y1, x1, y2, x2]
+                if name == "person":
+                    self.pedestrian_boxes.append(bbox)
+                    continue
+                if name not in self.CLASSES:
+                    continue
+                cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+                best_id = None
+                best_distance = 0.08
+                for tid, old in self.active_tracks.items():
+                    if tid in used_old or old.vehicle_class != name or not old.trajectory:
+                        continue
+                    ox, oy = old.trajectory[-1]
+                    distance = math.hypot(cx - ox, cy - oy)
+                    if distance < best_distance:
+                        best_id = tid
+                        best_distance = distance
+                tid = best_id if best_id is not None else self.next_track_id
+                if best_id is None:
+                    self.next_track_id += 1
+                used_old.add(tid)
+                old = self.active_tracks.get(tid)
+                current[tid] = TrackedVehicle(
+                    track_id=tid,
+                    vehicle_class=name,
+                    confidence=float(box.conf[0]),
+                    bbox=bbox,
+                    speed_kmh=None,
+                    trajectory=((old.trajectory if old else []) + [[cx, cy]])[-30:],
+                    frames_tracked=(old.frames_tracked + 1 if old else 1),
+                )
         self.active_tracks = current
         return list(current.values())
 

@@ -158,6 +158,9 @@ export interface RoadDetection {
 
 export interface RoadDetectionResult {
   model: string;
+  timestamp?: string;
+  status?: string;
+  requires_manual_verification?: boolean;
   detection_count: number;
   detections: RoadDetection[];
 }

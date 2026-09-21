@@ -605,7 +605,7 @@ export const RoadView = ({
                 }}
               >
                 <CheckCircle2 size={17} color="#65e7c5" />
-                Road model ready
+                {result ? 'Model responded' : 'Readiness checked when scanning'}
               </div>
             </div>
 
@@ -756,7 +756,9 @@ export const RoadView = ({
                     fontSize: "0.65rem",
                   }}
                 >
-                  Model: {result.model}
+                  Model: {result.model}<br />
+                  {result.status || 'Custom trained road detector'}<br />
+                  {result.timestamp ? new Date(result.timestamp).toLocaleString() : 'Timestamp unavailable'} · Manual verification required
                 </div>
               </div>
             )}

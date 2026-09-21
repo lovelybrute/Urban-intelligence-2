@@ -861,6 +861,39 @@ export const apiClient = {
       warning: string | null;
     }>;
   },
+  detectTraffic: async (file: File) => {
+    await waitForDetectionBackend();
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await request("/detect/traffic", {
+      method: "POST",
+      body: formData,
+      signal: AbortSignal.timeout(180000),
+    });
+    return response.json();
+  },
+  detectInfrastructure: async (file: File) => {
+    await waitForDetectionBackend();
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await request("/detect/infrastructure", {
+      method: "POST",
+      body: formData,
+      signal: AbortSignal.timeout(180000),
+    });
+    return response.json();
+  },
+  detectSafety: async (file: File) => {
+    await waitForDetectionBackend();
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await request("/detect/safety", {
+      method: "POST",
+      body: formData,
+      signal: AbortSignal.timeout(180000),
+    });
+    return response.json();
+  },
   getBuses: async (): Promise<Bus[]> => {
     if (DEMO_MODE) return MOCK_BUSES;
     const rows = await getCollection<any>("/buses/", []);

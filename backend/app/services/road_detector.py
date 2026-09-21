@@ -91,6 +91,8 @@ def warm_road_model():
                         device="cpu",
                     )
                 model = _model
+            else:
+                raise
         _model_warmup_ms = round((time.perf_counter() - started) * 1000, 2)
     return model
 

@@ -193,9 +193,11 @@ class ANPRProcessor:
                     if detection_confidence <= 0:
                         detection_confidence = confidence
                     return text, detection_confidence, confidence
+            except ModuleNotFoundError:
+                pass
             except Exception as exc:
                 import logging
-                logging.getLogger("uvicorn.error").exception("EasyOCR ANPR failed: %s", exc)
+                logging.getLogger("uvicorn.error").warning("EasyOCR ANPR failed: %s", exc)
 
             # Local fallback when Tesseract happens to be installed.
             try:
@@ -212,6 +214,8 @@ class ANPRProcessor:
                                 tess_candidates.append((text, conf))
                     if tess_candidates:
                         text, confidence = max(tess_candidates, key=lambda item: item[1])
+                        if detection_confidence <= 0:
+                            detection_confidence = confidence
                         return text, detection_confidence, confidence
             except Exception:
                 pass

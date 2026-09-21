@@ -10,13 +10,8 @@ test: images/test              # test images (optional)
 
 # Classes
 names:
-  0: pothole
-  1: longitudinal_crack
-  2: transverse_crack
-  3: alligator_crack
-  4: waterlogging
-  5: damaged_divider
-  6: missing_divider
-  7: damaged_sign
-  8: missing_sign
-  9: missing_zebra
+  0: longitudinal_crack
+  1: transverse_crack
+  2: alligator_crack
+  3: other_corruption
+  4: pothole

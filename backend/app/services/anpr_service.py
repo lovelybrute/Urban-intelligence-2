@@ -33,6 +33,7 @@ def recognize_plate(raw:bytes):
     except (UnidentifiedImageError,OSError):
         raise ValueError("Invalid image")
     result=get_processor().process_vehicle_crop(0,frame)
+    has_plate_weights = WEIGHTS is not None and WEIGHTS.is_file()
     return {
         "plate_number":result.plate_number,"raw_ocr_text":result.raw_ocr_text,
         "plate_detection_confidence":result.plate_detection_confidence,
@@ -40,6 +41,6 @@ def recognize_plate(raw:bytes):
         "is_format_valid":result.is_format_valid,
         "requires_manual_verification":result.requires_manual_verification,
         "timestamp":result.timestamp,
-        "mode":"trained_plate_detector" if WEIGHTS.is_file() else "ocr_prototype_no_plate_detector",
-        "warning":None if WEIGHTS.is_file() else "Custom plate-localizer weights are not trained yet; OCR result must be manually verified."
+        "mode":"trained_plate_detector" if has_plate_weights else "ocr_prototype_no_plate_detector",
+        "warning":None if has_plate_weights else "Custom plate-localizer weights are not trained yet; OCR result must be manually verified."
     }

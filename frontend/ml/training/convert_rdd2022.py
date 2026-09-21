@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse, shutil, xml.etree.ElementTree as ET
 from pathlib import Path
 
-MAP={"D00":0,"D10":1,"D20":2,"D40":3}
+MAP={"D00":0,"D10":1,"D20":2,"D40":4}
 EXT={".jpg",".jpeg",".png",".webp"}
 
 def convert(xml:Path, out:Path):
