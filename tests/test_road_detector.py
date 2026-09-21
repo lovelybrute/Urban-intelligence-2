@@ -32,11 +32,29 @@ class _Result:
     names = {0: "pothole"}
 
 
+class _CandidateBox:
+    cls = [_Scalar(0)]
+    conf = [_Scalar(0.91)]
+    xyxy = [_Coordinates([44, 42, 210, 216])]
+
+
+class _CandidateResult:
+    boxes = [_CandidateBox()]
+    names = {0: "Pothole"}
+
+
 class _Model:
     def predict(self, **kwargs):
         assert kwargs["source"].shape == (640, 640, 3)
         assert kwargs["imgsz"] == 160
         return [_Result()]
+
+
+class _CandidateModel:
+    def predict(self, **kwargs):
+        assert kwargs["source"].shape == (640, 640, 3)
+        assert kwargs["imgsz"] == 160
+        return [_CandidateResult()]
 
 
 def test_detection_scales_boxes_back_to_original_image(monkeypatch):
@@ -72,3 +90,20 @@ def test_detection_scales_boxes_back_to_original_image(monkeypatch):
             },
         }
     ]
+
+
+def test_detection_uses_pretrained_pothole_model_when_available(monkeypatch):
+    image = Image.new("RGB", (1280, 1280), color="gray")
+    raw = BytesIO()
+    image.save(raw, format="JPEG")
+
+    monkeypatch.setattr(road_detector, "get_model", lambda: _Model())
+    monkeypatch.setattr(road_detector, "get_pretrained_pothole_model", lambda: _CandidateModel())
+    monkeypatch.setattr(road_detector, "USE_PRETRAINED_POTHOLE_MODEL", True)
+    monkeypatch.setattr(road_detector, "INFERENCE_SIZE", 160)
+
+    detections, _ = road_detector.detect_road_defects(raw.getvalue(), 0.25)
+    potholes = [d for d in detections if d["class_name"] == "pothole"]
+
+    assert len(potholes) >= 1
+    assert potholes[0]["confidence"] >= 0.875

@@ -23,6 +23,10 @@ except ImportError:  # Optional: edge nodes normally perform GPU inference.
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PT_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
 ONNX_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.onnx"
+PRETRAINED_POTHOLE_MODEL_PATHS = [
+    PROJECT_ROOT / "frontend" / "ml" / "weights" / "candidates" / "vinothvikas1987_road_distress_yolov8_best.pt",
+    PROJECT_ROOT / "frontend" / "ml" / "weights" / "candidates" / "peterhdd_pothole_yolov8_best.pt",
+]
 # Prefer the validated PyTorch checkpoint in cloud deployment. The current ONNX
 # export is incompatible with Render's ONNX Runtime graph support (Split
 # num_outputs), so ONNX remains opt-in until a compatible export is validated.
@@ -30,6 +34,8 @@ USE_ONNX = os.getenv("ROAD_AI_USE_ONNX", "0").strip().lower() in {"1", "true", "
 MODEL_PATH = ONNX_MODEL_PATH if USE_ONNX and ONNX_MODEL_PATH.exists() else PT_MODEL_PATH
 
 _model = None
+_pretrained_pothole_model = None
+_pretrained_pothole_model_path = None
 _inference_lock = threading.Lock()
 _model_load_ms = None
 _model_warmup_ms = None
@@ -38,6 +44,8 @@ _model_warmup_ms = None
 INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "640"))
 PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", str(INFERENCE_SIZE)))
 ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.50"))
+ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.06"))
+USE_PRETRAINED_POTHOLE_MODEL = os.getenv("ROAD_AI_USE_PRETRAINED_POTHOLE", "0").strip().lower() in {"1", "true", "yes"}
 
 
 def get_model():
@@ -67,6 +75,20 @@ def get_model():
         _model_load_ms = round((time.perf_counter() - load_started) * 1000, 2)
 
     return _model
+
+
+def get_pretrained_pothole_model():
+    global _pretrained_pothole_model, _pretrained_pothole_model_path
+    if YOLO is None:
+        return None
+    if _pretrained_pothole_model is not None:
+        return _pretrained_pothole_model
+    for candidate in PRETRAINED_POTHOLE_MODEL_PATHS:
+        if candidate.exists():
+            _pretrained_pothole_model_path = candidate
+            _pretrained_pothole_model = YOLO(str(candidate))
+            return _pretrained_pothole_model
+    return None
 
 
 def warm_road_model():
@@ -104,6 +126,106 @@ def warm_road_model():
     return model
 
 
+def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
+    model = get_model()
+    inference_confidence = min(confidence, ROAD_POTHOLE_MIN_CONFIDENCE)
+    try:
+        with _inference_lock:
+            results = model.predict(
+                source=frame,
+                conf=inference_confidence,
+                verbose=False,
+                imgsz=INFERENCE_SIZE,
+                device="cpu",
+            )
+    except Exception:
+        if PT_MODEL_PATH.exists() and MODEL_PATH != PT_MODEL_PATH:
+            MODEL_PATH = PT_MODEL_PATH
+            _model = YOLO(str(PT_MODEL_PATH))
+            with _inference_lock:
+                results = _model.predict(
+                    source=frame,
+                        conf=inference_confidence,
+                    verbose=False,
+                    imgsz=INFERENCE_SIZE,
+                    device="cpu",
+                )
+        else:
+            raise
+
+    detections = []
+    for result in results:
+        if result.boxes is None:
+            continue
+        for box in result.boxes:
+            class_id = int(box.cls[0].item())
+            class_name = str(result.names.get(class_id, "")).strip()
+            score = float(box.conf[0].item())
+            if score < confidence and class_name.lower() != "pothole":
+                continue
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            detections.append(
+                {
+                    "class_id": class_id,
+                    "class_name": class_name,
+                    "confidence": round(score, 4),
+                    "bbox": {
+                        "x1": round(float(x1) * scale_x, 2),
+                        "y1": round(float(y1) * scale_y, 2),
+                        "x2": round(float(x2) * scale_x, 2),
+                        "y2": round(float(y2) * scale_y, 2),
+                    },
+                }
+            )
+    return detections
+
+
+def _collect_pothole_detections(frame, scale_x, scale_y, confidence):
+    if not USE_PRETRAINED_POTHOLE_MODEL:
+        return []
+    candidate_model = get_pretrained_pothole_model()
+    if candidate_model is None:
+        return []
+    try:
+        with _inference_lock:
+            results = candidate_model.predict(
+                source=frame,
+                conf=confidence,
+                verbose=False,
+                imgsz=INFERENCE_SIZE,
+                device="cpu",
+            )
+    except Exception:
+        return []
+
+    detections = []
+    for result in results:
+        if result.boxes is None:
+            continue
+        for box in result.boxes:
+            class_id = int(box.cls[0].item())
+            name = str(result.names.get(class_id, "")).strip()
+            if "pothole" not in name.lower():
+                continue
+            score = float(box.conf[0].item())
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            detections.append(
+                {
+                    "class_id": class_id,
+                    "class_name": "pothole",
+                    "confidence": round(score, 4),
+                    "bbox": {
+                        "x1": round(float(x1) * scale_x, 2),
+                        "y1": round(float(y1) * scale_y, 2),
+                        "x2": round(float(x2) * scale_x, 2),
+                        "y2": round(float(y2) * scale_y, 2),
+                    },
+                    "detection_method": "PRETRAINED-POTHOLE MODEL",
+                }
+            )
+    return _nms_by_class(detections, ROAD_NMS_IOU)
+
+
 def detect_road_defects(raw: bytes, confidence: float = 0.10):
     global MODEL_PATH, _model
     request_started = time.perf_counter()
@@ -130,63 +252,14 @@ def detect_road_defects(raw: bytes, confidence: float = 0.10):
     # Serialize inference on tiny CPU instances so concurrent scans do not
     # exhaust CPU/RAM or invoke the same model object concurrently.
     inference_started = time.perf_counter()
-    try:
-        with _inference_lock:
-            results = model.predict(
-                source=frame,
-                conf=confidence,
-                verbose=False,
-                imgsz=INFERENCE_SIZE,
-                device="cpu",
-            )
-    except Exception:
-        if PT_MODEL_PATH.exists() and MODEL_PATH != PT_MODEL_PATH:
-            MODEL_PATH = PT_MODEL_PATH
-            _model = YOLO(str(PT_MODEL_PATH))
-            with _inference_lock:
-                results = _model.predict(
-                    source=frame,
-                    conf=confidence,
-                    verbose=False,
-                    imgsz=INFERENCE_SIZE,
-                    device="cpu",
-                )
-        else:
-            raise
+    detections = _collect_road_model_detections(frame, scale_x, scale_y, confidence)
+    pothole_detections = _collect_pothole_detections(frame, scale_x, scale_y, confidence)
+    if pothole_detections:
+        detections.extend(pothole_detections)
+    detections = _nms_by_class(detections, ROAD_NMS_IOU)
     inference_ms = (time.perf_counter() - inference_started) * 1000
 
-    detections = []
-
-    for result in results:
-        if result.boxes is None:
-            continue
-
-        for box in result.boxes:
-            class_id = int(box.cls[0].item())
-            score = float(box.conf[0].item())
-
-            x1, y1, x2, y2 = box.xyxy[0].tolist()
-            x1 = round(float(x1) * scale_x, 2)
-            y1 = round(float(y1) * scale_y, 2)
-            x2 = round(float(x2) * scale_x, 2)
-            y2 = round(float(y2) * scale_y, 2)
-
-            detections.append(
-                {
-                    "class_id": class_id,
-                    "class_name": result.names[class_id],
-                    "confidence": round(score, 4),
-                    "bbox": {
-                        "x1": x1,
-                        "y1": y1,
-                        "x2": x2,
-                        "y2": y2,
-                    },
-                }
-            )
-
     postprocess_started = time.perf_counter()
-    detections = _nms_by_class(detections, ROAD_NMS_IOU)
     waterlogging_started = time.perf_counter()
     detections.extend(_detect_waterlogging(frame, scale_x, scale_y))
     waterlogging_ms = (time.perf_counter() - waterlogging_started) * 1000
