@@ -58,6 +58,9 @@ frontend/ml/weights/traffic_india.pt
 frontend/ml/weights/anpr_plate.pt
 frontend/ml/weights/anpr_plate.onnx
 frontend/ml/weights/infrastructure.pt
+frontend/ml/configs/*runtime*.yaml
+weights/
+yolov8n.pt
 
 # Docker
 docker-compose.override.yml
