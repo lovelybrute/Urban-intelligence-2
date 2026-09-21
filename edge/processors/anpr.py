@@ -67,12 +67,14 @@ class ANPRProcessor:
     def __init__(self, min_confidence: float = 0.55, model_path: Optional[str] = None):
         self.min_confidence = min_confidence
         self.model = None
+        self.use_easyocr = os.getenv("ANPR_USE_EASYOCR", "0").strip().lower() in {"1", "true", "yes"}
         if model_path:
             p = Path(model_path)
             if p.is_file():
                 try:
                     from ultralytics import YOLO
                     self.model = YOLO(str(p))
+                    self.use_easyocr = os.getenv("ANPR_USE_EASYOCR", "1").strip().lower() not in {"0", "false", "no"}
                 except Exception:
                     self.model = None
 
@@ -171,34 +173,6 @@ class ANPRProcessor:
             thresh = cv2.adaptiveThreshold(
                 denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
             )
-            # Prefer EasyOCR in cloud deployments: unlike pytesseract it does not
-            # require a separately installed Tesseract system executable.
-            try:
-                import easyocr
-                if not hasattr(self, "_easyocr_reader"):
-                    self._easyocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-                candidates = []
-                for candidate in (plate_crop, thresh, gray):
-                    reads = self._easyocr_reader.readtext(
-                        candidate, detail=1,
-                        allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-                        paragraph=False,
-                    )
-                    if reads:
-                        text = "".join(str(item[1]).strip() for item in reads)
-                        confidence = sum(float(item[2]) for item in reads) / len(reads)
-                        candidates.append((text, confidence))
-                if candidates:
-                    text, confidence = max(candidates, key=lambda item: item[1])
-                    if detection_confidence <= 0:
-                        detection_confidence = confidence
-                    return text, detection_confidence, confidence
-            except ModuleNotFoundError:
-                pass
-            except Exception as exc:
-                import logging
-                logging.getLogger("uvicorn.error").warning("EasyOCR ANPR failed: %s", exc)
-
             # Local fallback when Tesseract happens to be installed.
             try:
                 import pytesseract
@@ -219,6 +193,34 @@ class ANPRProcessor:
                         return text, detection_confidence, confidence
             except Exception:
                 pass
+            # EasyOCR is accurate but heavy on small production instances. Only
+            # use it when explicitly enabled or when a plate detector is present.
+            if self.use_easyocr:
+                try:
+                    import easyocr
+                    if not hasattr(self, "_easyocr_reader"):
+                        self._easyocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+                    candidates = []
+                    for candidate in (plate_crop, thresh, gray):
+                        reads = self._easyocr_reader.readtext(
+                            candidate, detail=1,
+                            allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+                            paragraph=False,
+                        )
+                        if reads:
+                            text = "".join(str(item[1]).strip() for item in reads)
+                            confidence = sum(float(item[2]) for item in reads) / len(reads)
+                            candidates.append((text, confidence))
+                    if candidates:
+                        text, confidence = max(candidates, key=lambda item: item[1])
+                        if detection_confidence <= 0:
+                            detection_confidence = confidence
+                        return text, detection_confidence, confidence
+                except ModuleNotFoundError:
+                    pass
+                except Exception as exc:
+                    import logging
+                    logging.getLogger("uvicorn.error").warning("EasyOCR ANPR failed: %s", exc)
         except Exception:
             pass
         return "", 0.0, 0.0

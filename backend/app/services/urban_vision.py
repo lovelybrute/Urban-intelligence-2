@@ -23,9 +23,11 @@ except ImportError:  # pragma: no cover - optional ML runtime.
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TRAFFIC_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "traffic_coco.pt"
+TRAFFIC_RUNTIME_FALLBACK = "yolov8n.pt"
 TRAFFIC_CLASSES = {"person", "bicycle", "car", "motorcycle", "bus", "truck"}
 
 _traffic_model = None
+_traffic_model_name = None
 _traffic_lock = threading.Lock()
 
 
@@ -73,23 +75,27 @@ def _scale_box(decoded: DecodedImage, xyxy: list[float]) -> dict[str, float]:
 
 def _traffic_status() -> dict[str, Any]:
     return {
-        "model_ready": TRAFFIC_MODEL_PATH.exists(),
-        "weight": TRAFFIC_MODEL_PATH.name,
+        "model_ready": TRAFFIC_MODEL_PATH.exists() or YOLO is not None,
+        "weight": TRAFFIC_MODEL_PATH.name if TRAFFIC_MODEL_PATH.exists() else TRAFFIC_RUNTIME_FALLBACK,
         "engine": "pytorch",
         "method": "PRETRAINED COCO YOLO",
         "supported_classes": sorted(TRAFFIC_CLASSES),
         "unsupported_classes": ["auto_rickshaw", "emergency_vehicle"],
+        "runtime_fallback": None if TRAFFIC_MODEL_PATH.exists() else "Ultralytics COCO nano weights",
     }
 
 
 def _get_traffic_model():
-    global _traffic_model
+    global _traffic_model, _traffic_model_name
     if YOLO is None:
         raise RuntimeError("Ultralytics is not installed")
-    if not TRAFFIC_MODEL_PATH.exists():
-        raise FileNotFoundError(f"Traffic model not found: {TRAFFIC_MODEL_PATH}")
     if _traffic_model is None:
-        _traffic_model = YOLO(str(TRAFFIC_MODEL_PATH))
+        if TRAFFIC_MODEL_PATH.exists():
+            _traffic_model_name = TRAFFIC_MODEL_PATH.name
+            _traffic_model = YOLO(str(TRAFFIC_MODEL_PATH))
+        else:
+            _traffic_model_name = TRAFFIC_RUNTIME_FALLBACK
+            _traffic_model = YOLO(TRAFFIC_RUNTIME_FALLBACK)
     return _traffic_model
 
 
@@ -156,7 +162,7 @@ def detect_traffic(raw: bytes, confidence: float = 0.25) -> dict[str, Any]:
         density_level = "LOW"
 
     return {
-        "model": TRAFFIC_MODEL_PATH.name,
+        "model": _traffic_model_name or (TRAFFIC_MODEL_PATH.name if TRAFFIC_MODEL_PATH.exists() else TRAFFIC_RUNTIME_FALLBACK),
         "method": "PRETRAINED",
         "source": "Ultralytics YOLO COCO pretrained weights",
         "license": "AGPL-3.0 software; COCO pretrained classes",
