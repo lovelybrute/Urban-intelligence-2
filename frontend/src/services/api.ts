@@ -839,6 +839,28 @@ export const apiClient = {
 
     return response.json();
   },
+  detectAnpr: async (file: File) => {
+    await waitForDetectionBackend();
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await request("/detect/anpr", {
+      method: "POST",
+      body: formData,
+      signal: AbortSignal.timeout(180000),
+    });
+    return response.json() as Promise<{
+      plate_number: string;
+      raw_ocr_text: string;
+      plate_detection_confidence: number;
+      ocr_confidence: number;
+      overall_confidence: number;
+      is_format_valid: boolean;
+      requires_manual_verification: boolean;
+      timestamp: string;
+      mode: string;
+      warning: string | null;
+    }>;
+  },
   getBuses: async (): Promise<Bus[]> => {
     if (DEMO_MODE) return MOCK_BUSES;
     const rows = await getCollection<any>("/buses/", []);
