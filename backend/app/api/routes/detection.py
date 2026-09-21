@@ -18,7 +18,7 @@ def detection_health():
 @router.post("/road")
 async def detect_road(
     file: UploadFile = File(...),
-    confidence: float = 0.25,
+    confidence: float = 0.18,
 ):
     if confidence < 0.01 or confidence > 1.0:
         raise HTTPException(
@@ -42,7 +42,7 @@ async def detect_road(
         )
 
     try:
-        # YOLO/PyTorch inference is CPU-heavy. Run it outside the async
+        # Road-model inference is CPU-heavy. Run it outside the async
         # event loop so health/docs/API requests stay responsive during inference.
         detections = await run_in_threadpool(
             detect_road_defects,
@@ -75,7 +75,7 @@ async def detect_road(
         )
 
     return {
-        "model": "road_defect_best.pt",
+        "model": road_model_health()["weight"],
         "detection_count": len(detections),
         "detections": detections,
     }
