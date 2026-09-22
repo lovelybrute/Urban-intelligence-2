@@ -5,7 +5,7 @@ import threading
 import time
 
 import numpy as np
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageEnhance, ImageOps, UnidentifiedImageError
 
 try:
     import cv2
@@ -50,8 +50,9 @@ USE_PRETRAINED_POTHOLE_MODEL = os.getenv("ROAD_AI_USE_PRETRAINED_POTHOLE", "0").
 USE_TILED_INFERENCE = os.getenv("ROAD_AI_TILED", "1").strip().lower() in {"1", "true", "yes"}
 TILE_TRIGGER_SIDE = int(os.getenv("ROAD_AI_TILE_TRIGGER_SIDE", "900"))
 TILE_SIZE = int(os.getenv("ROAD_AI_TILE_SIZE", "512"))
+TILE_INFERENCE_SIZE = int(os.getenv("ROAD_AI_TILE_IMGSZ", "416"))
 TILE_OVERLAP = float(os.getenv("ROAD_AI_TILE_OVERLAP", "0.12"))
-MAX_TILES = int(os.getenv("ROAD_AI_MAX_TILES", "4"))
+MAX_TILES = int(os.getenv("ROAD_AI_MAX_TILES", "6"))
 
 
 def get_model():
@@ -132,16 +133,17 @@ def warm_road_model():
     return model
 
 
-def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
+def _collect_road_model_detections(frame, scale_x, scale_y, confidence, imgsz=None):
     model = get_model()
     inference_confidence = confidence
+    predict_size = int(imgsz or INFERENCE_SIZE)
     try:
         with _inference_lock:
             results = model.predict(
                 source=frame,
                 conf=inference_confidence,
                 verbose=False,
-                imgsz=INFERENCE_SIZE,
+                imgsz=predict_size,
                 iou=ROAD_NMS_IOU,
                 max_det=200,
                 device="cpu",
@@ -155,8 +157,8 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
                     source=frame,
                         conf=inference_confidence,
                     verbose=False,
-                    imgsz=INFERENCE_SIZE,
-                        iou=ROAD_NMS_IOU,
+                    imgsz=predict_size,
+                iou=ROAD_NMS_IOU,
                         max_det=200,
                     device="cpu",
                 )
@@ -265,7 +267,7 @@ def _collect_tiled_detections(image_rgb, original_width, original_height, confid
         crop = image_rgb.crop((x, y, x + tile, y + tile))
         frame = np.asarray(crop).copy()
         crop.close()
-        local = _collect_road_model_detections(frame, 1.0, 1.0, confidence)
+        local = _collect_road_model_detections(frame, 1.0, 1.0, confidence, TILE_INFERENCE_SIZE)
         for det in local:
             box = det["bbox"]
             box["x1"] = round((box["x1"] + x) * original_width / width, 2)
@@ -311,6 +313,22 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
 
     inference_started = time.perf_counter()
     detections = _collect_road_model_detections(frame, scale_x, scale_y, confidence)
+
+    # If the first pass is weak, a lightly contrast-enhanced pass can recover
+    # pothole edges/shadows without changing or fabricating model confidence.
+    strongest = max((float(d["confidence"]) for d in detections), default=0.0)
+    if strongest < 0.45:
+        enhanced_image = Image.fromarray(frame)
+        enhanced_image = ImageEnhance.Contrast(enhanced_image).enhance(1.18)
+        enhanced_frame = np.asarray(enhanced_image).copy()
+        enhanced_image.close()
+        enhanced = _collect_road_model_detections(
+            enhanced_frame, scale_x, scale_y, confidence, INFERENCE_SIZE
+        )
+        for item in enhanced:
+            item["detection_method"] = item.get("detection_method", "CUSTOM YOLO") + " / CONTRAST"
+        detections.extend(enhanced)
+        del enhanced_frame, enhanced
 
     tiled_detections = _collect_tiled_detections(
         tile_image, original_width, original_height, confidence
