@@ -46,6 +46,10 @@ PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", "1024"))
 ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.70"))
 ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.12"))
 USE_PRETRAINED_POTHOLE_MODEL = os.getenv("ROAD_AI_USE_PRETRAINED_POTHOLE", "0").strip().lower() in {"1", "true", "yes"}
+USE_TILED_INFERENCE = os.getenv("ROAD_AI_TILED", "1").strip().lower() in {"1", "true", "yes"}
+TILE_TRIGGER_SIDE = int(os.getenv("ROAD_AI_TILE_TRIGGER_SIDE", "900"))
+TILE_SIZE = int(os.getenv("ROAD_AI_TILE_SIZE", "512"))
+TILE_OVERLAP = float(os.getenv("ROAD_AI_TILE_OVERLAP", "0.18"))
 
 
 def get_model():
@@ -230,6 +234,44 @@ def _collect_pothole_detections(frame, scale_x, scale_y, confidence):
     return _nms_by_class(detections, ROAD_NMS_IOU)
 
 
+def _collect_tiled_detections(image_rgb, original_width, original_height, confidence):
+    """Sequential tiled inference for small/multiple defects without RAM spikes."""
+    if not USE_TILED_INFERENCE:
+        return []
+    width, height = image_rgb.size
+    if max(width, height) < TILE_TRIGGER_SIDE:
+        return []
+
+    tile = max(256, min(TILE_SIZE, width, height))
+    overlap = max(0.0, min(0.40, TILE_OVERLAP))
+    step = max(64, int(tile * (1.0 - overlap)))
+    xs = list(range(0, max(1, width - tile + 1), step))
+    ys = list(range(0, max(1, height - tile + 1), step))
+    if not xs or xs[-1] != max(0, width - tile):
+        xs.append(max(0, width - tile))
+    if not ys or ys[-1] != max(0, height - tile):
+        ys.append(max(0, height - tile))
+
+    detections = []
+    for y in ys:
+        for x in xs:
+            crop = image_rgb.crop((x, y, x + tile, y + tile))
+            frame = np.asarray(crop)
+            crop.close()
+            local = _collect_road_model_detections(frame, 1.0, 1.0, confidence)
+            for det in local:
+                box = det["bbox"]
+                box["x1"] = round((box["x1"] + x) * original_width / width, 2)
+                box["x2"] = round((box["x2"] + x) * original_width / width, 2)
+                box["y1"] = round((box["y1"] + y) * original_height / height, 2)
+                box["y2"] = round((box["y2"] + y) * original_height / height, 2)
+                det["detection_method"] = det.get("detection_method", "CUSTOM YOLO") + " / TILED"
+                detections.append(det)
+            del frame, local
+
+    return _nms_by_class(detections, ROAD_NMS_IOU)
+
+
 def detect_road_defects(raw: bytes, confidence: float = 0.12):
     global MODEL_PATH, _model
     request_started = time.perf_counter()
@@ -246,7 +288,8 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
     decode_ms = (time.perf_counter() - decode_started) * 1000
     preprocess_started = time.perf_counter()
     # Bound input size before NumPy conversion to reduce RAM/CPU pressure.
-    decoded_image.thumbnail((PREPROCESS_MAX_SIDE, PREPROCESS_MAX_SIDE))
+    decoded_image.thumbnail((INFERENCE_SIZE, INFERENCE_SIZE))
+    tile_image.thumbnail((PREPROCESS_MAX_SIDE, PREPROCESS_MAX_SIDE))
     inference_width, inference_height = decoded_image.size
     scale_x = original_width / inference_width
     scale_y = original_height / inference_height
