@@ -30,7 +30,7 @@ def detection_health():
 @router.post("/road")
 async def detect_road(
     file: UploadFile = File(...),
-    confidence: float = 0.25,
+    confidence: float = 0.12,
 ):
     backend_started = datetime.now(timezone.utc)
     if confidence < 0.01 or confidence > 1.0:
