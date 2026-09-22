@@ -230,7 +230,7 @@ def _collect_pothole_detections(frame, scale_x, scale_y, confidence):
     return _nms_by_class(detections, ROAD_NMS_IOU)
 
 
-def detect_road_defects(raw: bytes, confidence: float = 0.25):
+def detect_road_defects(raw: bytes, confidence: float = 0.12):
     global MODEL_PATH, _model
     request_started = time.perf_counter()
     decode_started = request_started
