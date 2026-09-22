@@ -303,6 +303,12 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
     # exhaust CPU/RAM or invoke the same model object concurrently.
     inference_started = time.perf_counter()
     detections = _collect_road_model_detections(frame, scale_x, scale_y, confidence)
+    tiled_detections = _collect_tiled_detections(
+        tile_image, original_width, original_height, confidence
+    )
+    tile_image.close()
+    if tiled_detections:
+        detections.extend(tiled_detections)
     pothole_detections = _collect_pothole_detections(frame, scale_x, scale_y, confidence)
     if pothole_detections:
         detections.extend(pothole_detections)
