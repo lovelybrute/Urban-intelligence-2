@@ -253,22 +253,26 @@ def _collect_tiled_detections(image_rgb, original_width, original_height, confid
     if not ys or ys[-1] != max(0, height - tile):
         ys.append(max(0, height - tile))
 
+    positions = [(x, y) for y in ys for x in xs]
+    if len(positions) > MAX_TILES:
+        indexes = np.linspace(0, len(positions) - 1, MAX_TILES, dtype=int)
+        positions = [positions[int(i)] for i in indexes]
+
     detections = []
-    for y in ys:
-        for x in xs:
-            crop = image_rgb.crop((x, y, x + tile, y + tile))
-            frame = np.asarray(crop)
-            crop.close()
-            local = _collect_road_model_detections(frame, 1.0, 1.0, confidence)
-            for det in local:
-                box = det["bbox"]
-                box["x1"] = round((box["x1"] + x) * original_width / width, 2)
-                box["x2"] = round((box["x2"] + x) * original_width / width, 2)
-                box["y1"] = round((box["y1"] + y) * original_height / height, 2)
-                box["y2"] = round((box["y2"] + y) * original_height / height, 2)
-                det["detection_method"] = det.get("detection_method", "CUSTOM YOLO") + " / TILED"
-                detections.append(det)
-            del frame, local
+    for x, y in positions:
+        crop = image_rgb.crop((x, y, x + tile, y + tile))
+        frame = np.asarray(crop).copy()
+        crop.close()
+        local = _collect_road_model_detections(frame, 1.0, 1.0, confidence)
+        for det in local:
+            box = det["bbox"]
+            box["x1"] = round((box["x1"] + x) * original_width / width, 2)
+            box["x2"] = round((box["x2"] + x) * original_width / width, 2)
+            box["y1"] = round((box["y1"] + y) * original_height / height, 2)
+            box["y2"] = round((box["y2"] + y) * original_height / height, 2)
+            det["detection_method"] = det.get("detection_method", "CUSTOM YOLO") + " / TILED"
+            detections.append(det)
+        del frame, local
 
     return _nms_by_class(detections, ROAD_NMS_IOU)
 
@@ -278,56 +282,65 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
     request_started = time.perf_counter()
     decode_started = request_started
     try:
-        with Image.open(BytesIO(raw)) as image:
-            image.load()
-            image = ImageOps.exif_transpose(image).convert("RGB")
+        with Image.open(BytesIO(raw)) as source:
+            source.load()
+            image = ImageOps.exif_transpose(source).convert("RGB")
             original_width, original_height = image.size
-            decoded_image = image.copy()\n            image.close()
+            decoded_image = image.copy()
+            tile_image = image.copy()
+            image.close()
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")
 
     decode_ms = (time.perf_counter() - decode_started) * 1000
     preprocess_started = time.perf_counter()
-    # Bound input size before NumPy conversion to reduce RAM/CPU pressure.
     decoded_image.thumbnail((INFERENCE_SIZE, INFERENCE_SIZE))
     tile_image.thumbnail((PREPROCESS_MAX_SIDE, PREPROCESS_MAX_SIDE))
     inference_width, inference_height = decoded_image.size
     scale_x = original_width / inference_width
     scale_y = original_height / inference_height
-    frame = np.asarray(decoded_image)\n    decoded_image.close()
+    frame = np.asarray(decoded_image).copy()
+    decoded_image.close()
     preprocess_ms = (time.perf_counter() - preprocess_started) * 1000
+
     model_started = time.perf_counter()
-    model = get_model()
+    get_model()
     model_ready_ms = (time.perf_counter() - model_started) * 1000
 
-    # Serialize inference on tiny CPU instances so concurrent scans do not
-    # exhaust CPU/RAM or invoke the same model object concurrently.
     inference_started = time.perf_counter()
     detections = _collect_road_model_detections(frame, scale_x, scale_y, confidence)
+
     tiled_detections = _collect_tiled_detections(
         tile_image, original_width, original_height, confidence
     )
     tile_image.close()
     if tiled_detections:
         detections.extend(tiled_detections)
-    pothole_detections = _collect_pothole_detections(frame, scale_x, scale_y, confidence)
+
+    pothole_detections = _collect_pothole_detections(
+        frame, scale_x, scale_y, confidence
+    )
     if pothole_detections:
         detections.extend(pothole_detections)
     detections = _nms_by_class(detections, ROAD_NMS_IOU)
     inference_ms = (time.perf_counter() - inference_started) * 1000
 
-    # Waterlogging currently has a lightweight CV fallback because the road
-    # checkpoint may not contain a trained waterlogging class. Keep it clearly
-    # marked as heuristic so its score is never confused with YOLO confidence.
     postprocess_started = time.perf_counter()
     waterlogging_started = time.perf_counter()
-    model_has_waterlogging = any(d["class_name"].lower() == "waterlogging" for d in detections)
+    model_has_waterlogging = any(
+        d["class_name"].lower() == "waterlogging" for d in detections
+    )
     if not model_has_waterlogging:
         detections.extend(_detect_waterlogging(frame, scale_x, scale_y))
         detections = _nms_by_class(detections, ROAD_NMS_IOU)
     waterlogging_ms = (time.perf_counter() - waterlogging_started) * 1000
-    postprocess_ms = (time.perf_counter() - postprocess_started) * 1000
 
+    del frame
+    if torch is not None:
+        import gc
+        gc.collect()
+
+    postprocess_ms = (time.perf_counter() - postprocess_started) * 1000
     total_ms = (time.perf_counter() - request_started) * 1000
     timing = {
         "image_decode_ms": round(decode_ms, 2),
