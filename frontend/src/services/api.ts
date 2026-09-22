@@ -89,33 +89,16 @@ const wait = (milliseconds: number) =>
   new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
 
 async function waitForDetectionBackend(): Promise<void> {
-  const deadline = Date.now() + 45000;
-
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${API_BASE}/detect/health`, {
-        signal: AbortSignal.timeout(8000),
-      });
-
-      if (response.ok) {
-        const contentType = response.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-          const health = await response.json();
-          if (health?.road_model_ready && health?.ultralytics_ready) return;
-        }
-      }
-    } catch {
-      // Render's free service may reject requests while its instance starts.
-      // Retry until the bounded wake-up deadline instead of surfacing a false
-      // "backend unreachable" message immediately.
-    }
-
-    await wait(2000);
+  // Best-effort wake-up only. Never block an upload behind a long health-poll
+  // loop: the detection POST itself is the authoritative readiness check.
+  try {
+    await fetch(`${API_BASE}/detect/health`, {
+      signal: AbortSignal.timeout(3000),
+      cache: "no-store",
+    });
+  } catch {
+    // Continue immediately. The POST below will return the real backend error.
   }
-
-  throw new Error(
-    "Road AI service did not finish waking up. Please try the scan once more.",
-  );
 }
 export async function getEvidence(id: number) {
   const response = await request(`/events/${id}/evidence`);
@@ -831,7 +814,7 @@ export const apiClient = {
       return request(`/detect/road?confidence=${encodeURIComponent(confidence)}`, {
         method: "POST",
         body: formData,
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(30000),
       });
     };
 
