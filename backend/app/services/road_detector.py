@@ -41,8 +41,8 @@ _model_load_ms = None
 _model_warmup_ms = None
 # Benchmarking on RDD-style pothole images showed 640px materially improves
 # pothole box recall versus 320px while keeping warm CPU inference practical.
-INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "640"))
-PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", str(INFERENCE_SIZE)))
+INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "512"))
+PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", "1024"))
 ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.70"))
 ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.12"))
 USE_PRETRAINED_POTHOLE_MODEL = os.getenv("ROAD_AI_USE_PRETRAINED_POTHOLE", "0").strip().lower() in {"1", "true", "yes"}
@@ -137,7 +137,7 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
                 verbose=False,
                 imgsz=INFERENCE_SIZE,
                 iou=ROAD_NMS_IOU,
-                max_det=300,
+                max_det=200,
                 device="cpu",
             )
     except Exception:
@@ -151,7 +151,7 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
                     verbose=False,
                     imgsz=INFERENCE_SIZE,
                         iou=ROAD_NMS_IOU,
-                        max_det=300,
+                        max_det=200,
                     device="cpu",
                 )
         else:
@@ -239,7 +239,7 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
             image.load()
             image = ImageOps.exif_transpose(image).convert("RGB")
             original_width, original_height = image.size
-            decoded_image = image.copy()
+            decoded_image = image.copy()\n            image.close()
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")
 
@@ -250,7 +250,7 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
     inference_width, inference_height = decoded_image.size
     scale_x = original_width / inference_width
     scale_y = original_height / inference_height
-    frame = np.array(decoded_image)
+    frame = np.asarray(decoded_image)\n    decoded_image.close()
     preprocess_ms = (time.perf_counter() - preprocess_started) * 1000
     model_started = time.perf_counter()
     model = get_model()
