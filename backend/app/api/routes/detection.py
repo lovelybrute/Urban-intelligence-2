@@ -32,6 +32,7 @@ async def detect_road(
     file: UploadFile = File(...),
     confidence: float = 0.10,
 ):
+    backend_started = datetime.now(timezone.utc)
     if confidence < 0.01 or confidence > 1.0:
         raise HTTPException(
             status_code=400,
@@ -90,7 +91,13 @@ async def detect_road(
         "model": road_model_health()["weight"],
         "detection_count": len(detections),
         "detections": detections,
-        "timing": timing,
+        "timing": {
+            **timing,
+            "backend_request_ms": round(
+                (datetime.now(timezone.utc) - backend_started).total_seconds() * 1000,
+                2,
+            ),
+        },
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "gps": None,
         "requires_manual_verification": True,
@@ -101,6 +108,7 @@ async def detect_road(
 @router.post("/anpr")
 async def detect_anpr(file: UploadFile = File(...)):
     """Prototype ANPR endpoint. Never fabricates a plate when OCR is uncertain."""
+    backend_started = datetime.now(timezone.utc)
     raw = await file.read(MAX_FILE_SIZE + 1)
     await file.close()
     if not raw:
@@ -108,7 +116,12 @@ async def detect_anpr(file: UploadFile = File(...)):
     if len(raw) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="Image exceeds 5 MB")
     try:
-        return await run_in_threadpool(recognize_plate, raw)
+        result = await run_in_threadpool(recognize_plate, raw)
+        result["timing"]["backend_request_ms"] = round(
+            (datetime.now(timezone.utc) - backend_started).total_seconds() * 1000,
+            2,
+        )
+        return result
     except ValueError:
         raise HTTPException(status_code=422, detail="Upload a valid vehicle/plate image")
     except Exception:

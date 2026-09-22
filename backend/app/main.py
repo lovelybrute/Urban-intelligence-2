@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from app.services.road_detector import warm_road_model, MODEL_PATH
+from app.services.anpr_service import warm_anpr_model
 
 from app.core.config import settings
 from app.core.security import get_current_user, require_write
@@ -63,6 +64,12 @@ async def lifespan(app: FastAPI):
             # Keep non-AI platform routes available if model initialization
             # fails; /api/detect/health will expose readiness for diagnosis.
             logger.warning(f"⚠️ Road AI warm-up failed: {exc}")
+
+    try:
+        warm_anpr_model()
+        logger.info("✅ ANPR detector/OCR initialized")
+    except Exception as exc:
+        logger.warning(f"⚠️ ANPR warm-up failed: {exc}")
 
     # Production safety checks
     if settings.APP_ENV == "production":

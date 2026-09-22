@@ -5,7 +5,7 @@ import threading
 import time
 
 import numpy as np
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 try:
     import cv2
@@ -136,6 +136,8 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
                 conf=inference_confidence,
                 verbose=False,
                 imgsz=INFERENCE_SIZE,
+                iou=ROAD_NMS_IOU,
+                max_det=100,
                 device="cpu",
             )
     except Exception:
@@ -148,6 +150,8 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
                         conf=inference_confidence,
                     verbose=False,
                     imgsz=INFERENCE_SIZE,
+                        iou=ROAD_NMS_IOU,
+                        max_det=100,
                     device="cpu",
                 )
         else:
@@ -229,21 +233,24 @@ def _collect_pothole_detections(frame, scale_x, scale_y, confidence):
 def detect_road_defects(raw: bytes, confidence: float = 0.10):
     global MODEL_PATH, _model
     request_started = time.perf_counter()
-    preprocess_started = request_started
+    decode_started = request_started
     try:
         with Image.open(BytesIO(raw)) as image:
             image.load()
-            image = image.convert("RGB")
+            image = ImageOps.exif_transpose(image).convert("RGB")
             original_width, original_height = image.size
-            # Bound input size before NumPy conversion to reduce RAM/CPU pressure.
-            image.thumbnail((PREPROCESS_MAX_SIDE, PREPROCESS_MAX_SIDE))
-            inference_width, inference_height = image.size
-            scale_x = original_width / inference_width
-            scale_y = original_height / inference_height
-            frame = np.array(image)
+            decoded_image = image.copy()
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")
 
+    decode_ms = (time.perf_counter() - decode_started) * 1000
+    preprocess_started = time.perf_counter()
+    # Bound input size before NumPy conversion to reduce RAM/CPU pressure.
+    decoded_image.thumbnail((PREPROCESS_MAX_SIDE, PREPROCESS_MAX_SIDE))
+    inference_width, inference_height = decoded_image.size
+    scale_x = original_width / inference_width
+    scale_y = original_height / inference_height
+    frame = np.array(decoded_image)
     preprocess_ms = (time.perf_counter() - preprocess_started) * 1000
     model_started = time.perf_counter()
     model = get_model()
@@ -267,7 +274,9 @@ def detect_road_defects(raw: bytes, confidence: float = 0.10):
 
     total_ms = (time.perf_counter() - request_started) * 1000
     timing = {
+        "image_decode_ms": round(decode_ms, 2),
         "preprocess_ms": round(preprocess_ms, 2),
+        "model_load_ms": round(model_ready_ms, 2),
         "model_ready_ms": round(model_ready_ms, 2),
         "inference_ms": round(inference_ms, 2),
         "waterlogging_ms": round(waterlogging_ms, 2),

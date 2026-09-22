@@ -9,6 +9,7 @@ import re
 import os
 import shutil
 import uuid
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
@@ -44,6 +45,9 @@ class PlateResult:
     requires_manual_verification: bool
     explainability: List[str]
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    plate_bbox: Optional[List[float]] = None
+    localizer_status: str = "not_run"
+    timings: Dict[str, float] = field(default_factory=dict)
 
 
 class ANPRProcessor:
@@ -67,7 +71,15 @@ class ANPRProcessor:
     def __init__(self, min_confidence: float = 0.55, model_path: Optional[str] = None):
         self.min_confidence = min_confidence
         self.model = None
+        self._track_cache: Dict[int, Tuple[float, PlateResult, List[str]]] = {}
+        self._recognition_interval_seconds = float(os.getenv("ANPR_RECOGNITION_INTERVAL", "1.0"))
         self.use_easyocr = os.getenv("ANPR_USE_EASYOCR", "0").strip().lower() in {"1", "true", "yes"}
+        self._tesseract_ready = False
+        try:
+            import pytesseract
+            self._tesseract_ready = _configure_tesseract(pytesseract)
+        except ModuleNotFoundError:
+            pass
         if model_path:
             p = Path(model_path)
             if p.is_file():
@@ -82,23 +94,35 @@ class ANPRProcessor:
         self,
         vehicle_track_id: int,
         vehicle_image_array: Optional[Any],
-        simulated_plate_hint: Optional[str] = None
+        simulated_plate_hint: Optional[str] = None,
+        use_temporal_cache: bool = True,
     ) -> PlateResult:
         """
         Executes full ANPR pipeline:
         Detection -> Crop -> Enhancement -> OCR -> Validation -> Confidence Calibration.
         """
+        now = time.monotonic()
+        cached = self._track_cache.get(vehicle_track_id)
+        if use_temporal_cache and vehicle_image_array is not None and cached and now - cached[0] < self._recognition_interval_seconds:
+            return cached[1]
         if vehicle_image_array is not None:
-            raw_text, det_conf, ocr_conf = self._cv_ocr_pipeline(vehicle_image_array)
+            raw_text, det_conf, ocr_conf, plate_bbox, localizer_status, timings = self._cv_ocr_pipeline(vehicle_image_array)
         elif simulated_plate_hint:
             raw_text = simulated_plate_hint
             det_conf = 0.93
             ocr_conf = 0.88
+            plate_bbox = None
+            localizer_status = "simulated_hint"
+            timings = {}
         else:
             raw_text = ""
             det_conf = 0.0
             ocr_conf = 0.0
+            plate_bbox = None
+            localizer_status = "not_run"
+            timings = {}
 
+        validation_started = time.perf_counter()
         # Clean string: uppercase alphanumeric only
         cleaned_text = re.sub(r"[^A-Z0-9]", "", raw_text.upper())
         if cleaned_text.startswith("IND") and len(cleaned_text) >= 8:
@@ -108,6 +132,7 @@ class ANPRProcessor:
 
         # Validate syntax against official Indian vehicle format
         is_valid = bool(self.INDIAN_PLATE_REGEX.match(cleaned_text))
+        timings["validation_ms"] = round((time.perf_counter() - validation_started) * 1000, 2)
         
         # Overall confidence is geometric mean of plate localization and character recognition
         overall_conf = round((det_conf * ocr_conf) ** 0.5, 3) if det_conf else round(ocr_conf, 3)
@@ -127,7 +152,7 @@ class ANPRProcessor:
         if requires_manual:
             explainability.append("Flagged for manual operator verification in Command Center")
 
-        return PlateResult(
+        result = PlateResult(
             plate_id=f"plt_{uuid.uuid4().hex[:8]}",
             vehicle_track_id=vehicle_track_id,
             plate_number=final_plate_number,
@@ -138,11 +163,28 @@ class ANPRProcessor:
             is_format_valid=is_valid,
             is_low_confidence=is_low_conf,
             requires_manual_verification=requires_manual,
-            explainability=explainability
+            explainability=explainability,
+            plate_bbox=plate_bbox,
+            localizer_status=localizer_status,
+            timings=timings,
         )
+        if use_temporal_cache and vehicle_image_array is not None:
+            observations = cached[2] if cached else []
+            if result.is_format_valid and result.raw_ocr_text:
+                observations = (observations + [result.raw_ocr_text])[-5:]
+                result.explainability.append(f"Temporal observations retained: {len(observations)}")
+                if len(observations) >= 3:
+                    result.raw_ocr_text = max(set(observations), key=observations.count)
+                    result.is_format_valid = bool(self.INDIAN_PLATE_REGEX.match(result.raw_ocr_text))
+            self._track_cache[vehicle_track_id] = (time.monotonic(), result, observations)
+        return result
 
     def _cv_ocr_pipeline(self, frame_crop: Any) -> Tuple[str, float, float]:
         """Runs OpenCV enhancement and OCR if Tesseract / EasyOCR / PaddleOCR is installed."""
+        started = time.perf_counter()
+        timings: Dict[str, float] = {}
+        plate_bbox = None
+        localizer_status = "localizer_failure"
         try:
             import cv2
             import numpy as np
@@ -150,7 +192,9 @@ class ANPRProcessor:
             detection_confidence = 0.0
             if self.model is not None:
                 try:
+                    detection_started = time.perf_counter()
                     results = self.model(frame_crop, conf=0.20, verbose=False)
+                    timings["plate_detection_ms"] = round((time.perf_counter() - detection_started) * 1000, 2)
                     candidates = [box for result in results for box in result.boxes]
                     if candidates:
                         best = max(candidates, key=lambda box: float(box.conf[0]))
@@ -164,8 +208,11 @@ class ANPRProcessor:
                         if x2 > x1 and y2 > y1:
                             plate_crop = frame_crop[y1:y2, x1:x2]
                             detection_confidence = float(best.conf[0])
+                            plate_bbox = [x1, y1, x2, y2]
+                            localizer_status = "localized"
                 except Exception:
-                    pass
+                    timings.setdefault("plate_detection_ms", 0.0)
+            crop_started = time.perf_counter()
             gray = cv2.cvtColor(plate_crop, cv2.COLOR_BGR2GRAY)
             # Bilateral filter to remove noise while preserving edges
             denoised = cv2.bilateralFilter(gray, 11, 17, 17)
@@ -173,24 +220,26 @@ class ANPRProcessor:
             thresh = cv2.adaptiveThreshold(
                 denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
             )
+            timings["crop_enhancement_ms"] = round((time.perf_counter() - crop_started) * 1000, 2)
             # Local fallback when Tesseract happens to be installed.
             try:
                 import pytesseract
-                if _configure_tesseract(pytesseract):
+                if self._tesseract_ready:
+                    ocr_started = time.perf_counter()
                     tess_candidates = []
-                    for img in (plate_crop, thresh, gray):
-                        for psm in ("--psm 7", "--psm 8", "--psm 6"):
-                            data = pytesseract.image_to_data(img, config=f"{psm} -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", output_type=pytesseract.Output.DICT)
-                            tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
-                            if tokens:
-                                text = "".join(t for t, _ in tokens)
-                                conf = sum(c for _, c in tokens) / (100 * len(tokens))
-                                tess_candidates.append((text, conf))
+                    for img, psm in ((plate_crop, "--psm 7"), (thresh, "--psm 7"), (gray, "--psm 8"), (thresh, "--psm 8")):
+                        data = pytesseract.image_to_data(img, config=f"{psm} -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", output_type=pytesseract.Output.DICT)
+                        tokens = [(text.strip(), float(conf)) for text, conf in zip(data["text"], data["conf"]) if text.strip() and float(conf) >= 0]
+                        if tokens:
+                            text = "".join(t for t, _ in tokens)
+                            conf = sum(c for _, c in tokens) / (100 * len(tokens))
+                            tess_candidates.append((text, conf))
                     if tess_candidates:
                         text, confidence = max(tess_candidates, key=lambda item: item[1])
-                        if detection_confidence <= 0:
-                            detection_confidence = confidence
-                        return text, detection_confidence, confidence
+                        timings["ocr_ms"] = round((time.perf_counter() - ocr_started) * 1000, 2)
+                        timings["validation_ms"] = 0.0
+                        timings["total_ms"] = round((time.perf_counter() - started) * 1000, 2)
+                        return text, detection_confidence, confidence, plate_bbox, localizer_status, timings
             except Exception:
                 pass
             # EasyOCR is accurate but heavy on small production instances. Only
@@ -215,7 +264,10 @@ class ANPRProcessor:
                         text, confidence = max(candidates, key=lambda item: item[1])
                         if detection_confidence <= 0:
                             detection_confidence = confidence
-                        return text, detection_confidence, confidence
+                        timings["ocr_ms"] = round((time.perf_counter() - started) * 1000, 2)
+                        timings["validation_ms"] = 0.0
+                        timings["total_ms"] = round((time.perf_counter() - started) * 1000, 2)
+                        return text, detection_confidence, confidence, plate_bbox, localizer_status, timings
                 except ModuleNotFoundError:
                     pass
                 except Exception as exc:
@@ -223,4 +275,7 @@ class ANPRProcessor:
                     logging.getLogger("uvicorn.error").warning("EasyOCR ANPR failed: %s", exc)
         except Exception:
             pass
-        return "", 0.0, 0.0
+        timings.setdefault("ocr_ms", round((time.perf_counter() - started) * 1000, 2))
+        timings["validation_ms"] = 0.0
+        timings["total_ms"] = round((time.perf_counter() - started) * 1000, 2)
+        return "", detection_confidence, 0.0, plate_bbox, localizer_status, timings
