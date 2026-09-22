@@ -498,7 +498,7 @@ export const RoadView = ({
                             fontWeight: 900,
                           }}
                         >
-                          {`${detection.class_name.replace(/_/g, " ")} · Confidence ${Math.round(detection.confidence * 100)}%`}
+                          {isPrototypeWaterlogging(detection) ? `WATERLOGGING · CV score ${Math.round(detection.confidence * 100)}%` : `${detection.class_name.replace(/_/g, " ")} · AI confidence ${Math.round(detection.confidence * 100)}%`}
                         </span>
                       </div>
                     );
