@@ -44,7 +44,8 @@ _model_warmup_ms = None
 INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "640"))
 PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", "1024"))
 ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.70"))
-ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.12"))
+ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.08"))
+FUSION_IOU = float(os.getenv("ROAD_AI_FUSION_IOU", "0.35"))
 USE_PRETRAINED_POTHOLE_MODEL = os.getenv("ROAD_AI_USE_PRETRAINED_POTHOLE", "0").strip().lower() in {"1", "true", "yes"}
 USE_TILED_INFERENCE = os.getenv("ROAD_AI_TILED", "1").strip().lower() in {"1", "true", "yes"}
 TILE_TRIGGER_SIDE = int(os.getenv("ROAD_AI_TILE_TRIGGER_SIDE", "900"))
@@ -323,6 +324,7 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
     )
     if pothole_detections:
         detections.extend(pothole_detections)
+    detections = _fuse_same_class_evidence(detections)
     detections = _nms_by_class(detections, ROAD_NMS_IOU)
     inference_ms = (time.perf_counter() - inference_started) * 1000
 
@@ -367,6 +369,41 @@ def _box_iou(a, b):
     area_a = max(0, ax2 - ax1) * max(0, ay2 - ay1)
     area_b = max(0, bx2 - bx1) * max(0, by2 - by1)
     return inter / max(1e-6, area_a + area_b - inter)
+
+
+def _fuse_same_class_evidence(detections):
+    """Fuse corroborating full-frame/tile detections without inventing confidence."""
+    if not detections:
+        return detections
+    output = []
+    used = set()
+    for i, base in enumerate(detections):
+        if i in used:
+            continue
+        group = [base]
+        used.add(i)
+        for j in range(i + 1, len(detections)):
+            other = detections[j]
+            if j in used or other["class_name"] != base["class_name"]:
+                continue
+            if _box_iou(base, other) >= FUSION_IOU:
+                group.append(other)
+                used.add(j)
+        best = max(group, key=lambda d: d["confidence"]).copy()
+        if len(group) > 1:
+            # Independent-evidence fusion: P(any detector evidence is correct).
+            # This may increase confidence only when multiple passes agree.
+            miss_probability = 1.0
+            for item in group:
+                miss_probability *= 1.0 - max(0.0, min(1.0, float(item["confidence"])))
+            best["confidence"] = round(1.0 - miss_probability, 4)
+            best["raw_model_confidence"] = round(
+                max(float(item.get("raw_model_confidence", item["confidence"])) for item in group), 4
+            )
+            best["evidence_count"] = len(group)
+            best["confidence_method"] = "MULTI-PASS EVIDENCE FUSION"
+        output.append(best)
+    return output
 
 
 def _nms_by_class(detections, threshold):
