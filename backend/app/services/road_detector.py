@@ -44,7 +44,7 @@ _model_warmup_ms = None
 INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "640"))
 PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", str(INFERENCE_SIZE)))
 ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.50"))
-ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.06"))
+ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.20"))
 USE_PRETRAINED_POTHOLE_MODEL = os.getenv("ROAD_AI_USE_PRETRAINED_POTHOLE", "0").strip().lower() in {"1", "true", "yes"}
 
 
@@ -128,7 +128,7 @@ def warm_road_model():
 
 def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
     model = get_model()
-    inference_confidence = min(confidence, ROAD_POTHOLE_MIN_CONFIDENCE)
+    inference_confidence = confidence
     try:
         with _inference_lock:
             results = model.predict(
@@ -165,7 +165,7 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
             class_id = int(box.cls[0].item())
             class_name = str(result.names.get(class_id, "")).strip()
             score = float(box.conf[0].item())
-            if score < confidence and class_name.lower() != "pothole":
+            if score < confidence:
                 continue
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             detections.append(
@@ -230,7 +230,7 @@ def _collect_pothole_detections(frame, scale_x, scale_y, confidence):
     return _nms_by_class(detections, ROAD_NMS_IOU)
 
 
-def detect_road_defects(raw: bytes, confidence: float = 0.10):
+def detect_road_defects(raw: bytes, confidence: float = 0.25):
     global MODEL_PATH, _model
     request_started = time.perf_counter()
     decode_started = request_started
@@ -266,10 +266,12 @@ def detect_road_defects(raw: bytes, confidence: float = 0.10):
     detections = _nms_by_class(detections, ROAD_NMS_IOU)
     inference_ms = (time.perf_counter() - inference_started) * 1000
 
+    # Do not fabricate a confidence score from a color/shape heuristic.
+    # Road Conditions now reports only model-backed detections and their true
+    # YOLO confidence. A separate prototype waterlogging heuristic can still be
+    # developed elsewhere, but its score must not be presented as ML confidence.
     postprocess_started = time.perf_counter()
-    waterlogging_started = time.perf_counter()
-    detections.extend(_detect_waterlogging(frame, scale_x, scale_y))
-    waterlogging_ms = (time.perf_counter() - waterlogging_started) * 1000
+    waterlogging_ms = 0.0
     postprocess_ms = (time.perf_counter() - postprocess_started) * 1000
 
     total_ms = (time.perf_counter() - request_started) * 1000
