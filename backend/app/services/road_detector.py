@@ -41,7 +41,7 @@ _model_load_ms = None
 _model_warmup_ms = None
 # Benchmarking on RDD-style pothole images showed 640px materially improves
 # pothole box recall versus 320px while keeping warm CPU inference practical.
-INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "512"))
+INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "640"))
 PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", "1024"))
 ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.70"))
 ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.12"))
@@ -50,7 +50,7 @@ USE_TILED_INFERENCE = os.getenv("ROAD_AI_TILED", "1").strip().lower() in {"1", "
 TILE_TRIGGER_SIDE = int(os.getenv("ROAD_AI_TILE_TRIGGER_SIDE", "900"))
 TILE_SIZE = int(os.getenv("ROAD_AI_TILE_SIZE", "512"))
 TILE_OVERLAP = float(os.getenv("ROAD_AI_TILE_OVERLAP", "0.12"))
-MAX_TILES = int(os.getenv("ROAD_AI_MAX_TILES", "6"))
+MAX_TILES = int(os.getenv("ROAD_AI_MAX_TILES", "4"))
 
 
 def get_model():
@@ -178,6 +178,7 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence):
                     "class_id": class_id,
                     "class_name": class_name,
                     "confidence": round(score, 4),
+                    "raw_model_confidence": round(score, 4),
                     "bbox": {
                         "x1": round(float(x1) * scale_x, 2),
                         "y1": round(float(y1) * scale_y, 2),
