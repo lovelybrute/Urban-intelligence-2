@@ -89,12 +89,12 @@ const wait = (milliseconds: number) =>
   new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
 
 async function waitForDetectionBackend(): Promise<void> {
-  const deadline = Date.now() + 120000;
+  const deadline = Date.now() + 45000;
 
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`${API_BASE}/detect/health`, {
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (response.ok) {
@@ -110,7 +110,7 @@ async function waitForDetectionBackend(): Promise<void> {
       // "backend unreachable" message immediately.
     }
 
-    await wait(4000);
+    await wait(2000);
   }
 
   throw new Error(
@@ -818,7 +818,7 @@ const BACKEND_SCENARIOS = [
 export const apiClient = {
   detectRoad: async (
     file: File,
-    confidence = 0.10,
+    confidence = 0.25,
   ): Promise<RoadDetectionResult> => {
     // Wake Render with a lightweight GET before starting CPU-heavy inference.
     // Sending the multipart POST to a sleeping free instance can make the
@@ -831,7 +831,7 @@ export const apiClient = {
       return request(`/detect/road?confidence=${encodeURIComponent(confidence)}`, {
         method: "POST",
         body: formData,
-        signal: AbortSignal.timeout(180000),
+        signal: AbortSignal.timeout(45000),
       });
     };
 
