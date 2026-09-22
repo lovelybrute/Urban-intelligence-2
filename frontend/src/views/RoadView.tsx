@@ -118,7 +118,7 @@ export const RoadView = ({
     setResult(null);
 
     try {
-      const response = await apiClient.detectRoad(file, 0.10);
+      const response = await apiClient.detectRoad(file, 0.25);
       setResult(response);
     } catch (err) {
       console.error("Road AI scan failed:", err);
@@ -498,9 +498,7 @@ export const RoadView = ({
                             fontWeight: 900,
                           }}
                         >
-                          {isPrototypeWaterlogging(detection)
-                            ? `WATERLOGGING · Heuristic score: ${Math.round(detection.confidence * 100)}%`
-                            : `${detection.class_name.replace(/_/g, " ")} ${Math.round(detection.confidence * 100)}%`}
+                          {`${detection.class_name.replace(/_/g, " ")} · Confidence ${Math.round(detection.confidence * 100)}%`}
                         </span>
                       </div>
                     );
