@@ -440,6 +440,7 @@ def _nms_by_class(detections, threshold):
 
 
 def _detect_waterlogging(frame_rgb, scale_x, scale_y):
+    """Conservative standing-water heuristic; avoid vehicles/crash debris."""
     if cv2 is None:
         return []
     height, width = frame_rgb.shape[:2]
@@ -448,56 +449,66 @@ def _detect_waterlogging(frame_rgb, scale_x, scale_y):
 
     bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
     hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-    lower_y = int(height * 0.25)
-    roi = hsv[lower_y:, :]
 
-    blue_gray_water = cv2.inRange(roi, (80, 10, 35), (135, 160, 245))
-    muddy_water = cv2.inRange(roi, (5, 25, 35), (45, 255, 255))
-    mask = cv2.morphologyEx(blue_gray_water | muddy_water, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((11, 11), np.uint8))
+    # Standing water should occupy the lower road plane, not the middle/top of
+    # the scene where vehicles, barriers and crash debris commonly appear.
+    lower_y = int(height * 0.55)
+    roi = hsv[lower_y:, :]
+    blue_gray_water = cv2.inRange(roi, (80, 8, 45), (135, 95, 235))
+    muddy_water = cv2.inRange(roi, (7, 20, 40), (38, 150, 220))
+    mask = blue_gray_water | muddy_water
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((13, 13), np.uint8))
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     detections = []
-    image_area = max(1, height * width)
+    roi_area = max(1, roi.shape[0] * roi.shape[1])
     for contour in contours:
         area = cv2.contourArea(contour)
-        area_ratio = area / image_area
-        if area_ratio < 0.12 or area_ratio > 0.55:
+        area_ratio = area / roi_area
+        if area_ratio < 0.18 or area_ratio > 0.70:
             continue
-        x, y, w, h = cv2.boundingRect(contour)
-        if w < 20 or h < 12:
+        x, y0, w, h = cv2.boundingRect(contour)
+        if w < width * 0.28 or h < 12:
             continue
         aspect = w / max(1, h)
-        if aspect < 1.3:
+        # Water accumulation normally spreads horizontally across the road.
+        if aspect < 2.0:
             continue
-        y += lower_y
+        y = y0 + lower_y
         center_y = y + h / 2
-        if center_y < height * 0.35 or center_y > height * 0.88:
+        if center_y < height * 0.68:
             continue
-        crop = hsv[y : y + h, x : x + w]
-        saturation = float(np.median(crop[:, :, 1])) if crop.size else 255.0
-        hue = float(np.median(crop[:, :, 0])) if crop.size else 180.0
-        is_muddy = 5 <= hue <= 45
-        if not is_muddy and saturation > 140:
-            continue
-        confidence = min(0.72, 0.35 + area_ratio * 6)
-        detections.append(
-            {
-                "class_id": 5,
-                "class_name": "waterlogging",
-                "confidence": round(float(confidence), 4),
-                "bbox": {
-                    "x1": round(float(x) * scale_x, 2),
-                    "y1": round(float(y) * scale_y, 2),
-                    "x2": round(float(x + w) * scale_x, 2),
-                    "y2": round(float(y + h) * scale_y, 2),
-                },
-                "detection_method": "COMPUTER-VISION PROTOTYPE",
-                "requires_manual_verification": True,
-            }
-        )
-    return _nms_by_class(detections, 0.30)
 
+        crop_hsv = hsv[y:y+h, x:x+w]
+        crop_bgr = bgr[y:y+h, x:x+w]
+        if not crop_hsv.size or not crop_bgr.size:
+            continue
+        saturation = float(np.median(crop_hsv[:, :, 1]))
+        # Crash scenes/vehicles have dense edges and texture; standing water is
+        # generally smoother. Reject highly textured candidate regions.
+        gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY)
+        edge_density = float(np.count_nonzero(cv2.Canny(gray, 70, 150))) / max(1, gray.size)
+        if saturation > 135 or edge_density > 0.12:
+            continue
+
+        score = min(0.70, 0.30 + area_ratio * 0.75 + max(0.0, 0.12 - edge_density))
+        if score < 0.50:
+            continue
+        detections.append({
+            "class_id": 5,
+            "class_name": "waterlogging",
+            "confidence": round(float(score), 4),
+            "bbox": {
+                "x1": round(float(x) * scale_x, 2),
+                "y1": round(float(y) * scale_y, 2),
+                "x2": round(float(x + w) * scale_x, 2),
+                "y2": round(float(y + h) * scale_y, 2),
+            },
+            "detection_method": "COMPUTER-VISION PROTOTYPE",
+            "requires_manual_verification": True,
+        })
+    return _nms_by_class(detections, 0.30)
 
 def road_model_health():
     """Lightweight readiness check that does not load the model into memory."""
