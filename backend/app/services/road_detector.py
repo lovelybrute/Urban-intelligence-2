@@ -41,7 +41,7 @@ _model_load_ms = None
 _model_warmup_ms = None
 # Benchmarking on RDD-style pothole images showed 640px materially improves
 # pothole box recall versus 320px while keeping warm CPU inference practical.
-INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "640"))
+INFERENCE_SIZE = int(os.getenv("ROAD_AI_IMGSZ", "416"))
 PREPROCESS_MAX_SIDE = int(os.getenv("ROAD_AI_MAX_SIDE", str(INFERENCE_SIZE)))
 ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.50"))
 ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.20"))
@@ -266,12 +266,16 @@ def detect_road_defects(raw: bytes, confidence: float = 0.25):
     detections = _nms_by_class(detections, ROAD_NMS_IOU)
     inference_ms = (time.perf_counter() - inference_started) * 1000
 
-    # Do not fabricate a confidence score from a color/shape heuristic.
-    # Road Conditions now reports only model-backed detections and their true
-    # YOLO confidence. A separate prototype waterlogging heuristic can still be
-    # developed elsewhere, but its score must not be presented as ML confidence.
+    # Waterlogging currently has a lightweight CV fallback because the road
+    # checkpoint may not contain a trained waterlogging class. Keep it clearly
+    # marked as heuristic so its score is never confused with YOLO confidence.
     postprocess_started = time.perf_counter()
-    waterlogging_ms = 0.0
+    waterlogging_started = time.perf_counter()
+    model_has_waterlogging = any(d["class_name"].lower() == "waterlogging" for d in detections)
+    if not model_has_waterlogging:
+        detections.extend(_detect_waterlogging(frame, scale_x, scale_y))
+        detections = _nms_by_class(detections, ROAD_NMS_IOU)
+    waterlogging_ms = (time.perf_counter() - waterlogging_started) * 1000
     postprocess_ms = (time.perf_counter() - postprocess_started) * 1000
 
     total_ms = (time.perf_counter() - request_started) * 1000
