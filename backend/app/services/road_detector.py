@@ -49,7 +49,8 @@ USE_PRETRAINED_POTHOLE_MODEL = os.getenv("ROAD_AI_USE_PRETRAINED_POTHOLE", "0").
 USE_TILED_INFERENCE = os.getenv("ROAD_AI_TILED", "1").strip().lower() in {"1", "true", "yes"}
 TILE_TRIGGER_SIDE = int(os.getenv("ROAD_AI_TILE_TRIGGER_SIDE", "900"))
 TILE_SIZE = int(os.getenv("ROAD_AI_TILE_SIZE", "512"))
-TILE_OVERLAP = float(os.getenv("ROAD_AI_TILE_OVERLAP", "0.18"))
+TILE_OVERLAP = float(os.getenv("ROAD_AI_TILE_OVERLAP", "0.12"))
+MAX_TILES = int(os.getenv("ROAD_AI_MAX_TILES", "6"))
 
 
 def get_model():
