@@ -814,7 +814,9 @@ export const apiClient = {
       return request(`/detect/road?confidence=${encodeURIComponent(confidence)}`, {
         method: "POST",
         body: formData,
-        signal: AbortSignal.timeout(30000),
+        // Render may cold-start before CPU inference begins. Bound the wait,
+        // but leave enough time for one sequential scan and never auto-retry.
+        signal: AbortSignal.timeout(120000),
       });
     };
 

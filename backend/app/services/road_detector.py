@@ -47,7 +47,7 @@ ROAD_NMS_IOU = float(os.getenv("ROAD_AI_NMS_IOU", "0.70"))
 ROAD_POTHOLE_MIN_CONFIDENCE = float(os.getenv("ROAD_AI_POTHOLE_MIN_CONF", "0.08"))
 FUSION_IOU = float(os.getenv("ROAD_AI_FUSION_IOU", "0.35"))
 USE_PRETRAINED_POTHOLE_MODEL = os.getenv("ROAD_AI_USE_PRETRAINED_POTHOLE", "0").strip().lower() in {"1", "true", "yes"}
-USE_TILED_INFERENCE = os.getenv("ROAD_AI_TILED", "1").strip().lower() in {"1", "true", "yes"}
+USE_TILED_INFERENCE = os.getenv("ROAD_AI_TILED", "0").strip().lower() in {"1", "true", "yes"}
 TILE_TRIGGER_SIDE = int(os.getenv("ROAD_AI_TILE_TRIGGER_SIDE", "900"))
 TILE_SIZE = int(os.getenv("ROAD_AI_TILE_SIZE", "512"))
 TILE_INFERENCE_SIZE = int(os.getenv("ROAD_AI_TILE_IMGSZ", "416"))
@@ -134,6 +134,7 @@ def warm_road_model():
 
 
 def _collect_road_model_detections(frame, scale_x, scale_y, confidence, imgsz=None):
+    global _model, MODEL_PATH
     model = get_model()
     inference_confidence = confidence
     predict_size = int(imgsz or INFERENCE_SIZE)
@@ -155,11 +156,11 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence, imgsz=No
             with _inference_lock:
                 results = _model.predict(
                     source=frame,
-                        conf=inference_confidence,
+                    conf=inference_confidence,
                     verbose=False,
                     imgsz=predict_size,
-                iou=ROAD_NMS_IOU,
-                        max_det=200,
+                    iou=ROAD_NMS_IOU,
+                    max_det=200,
                     device="cpu",
                 )
         else:
@@ -182,6 +183,7 @@ def _collect_road_model_detections(frame, scale_x, scale_y, confidence, imgsz=No
                     "class_name": class_name,
                     "confidence": round(score, 4),
                     "raw_model_confidence": round(score, 4),
+                    "detection_method": "CUSTOM YOLO / TRAINED MODEL",
                     "bbox": {
                         "x1": round(float(x1) * scale_x, 2),
                         "y1": round(float(y1) * scale_y, 2),
@@ -290,16 +292,19 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
             source.load()
             image = ImageOps.exif_transpose(source).convert("RGB")
             original_width, original_height = image.size
-            decoded_image = image.copy()
-            tile_image = image.copy()
-            image.close()
+            # Render runs with tiled inference disabled. Avoid retaining a
+            # second full decoded image unless tiled inference is explicitly
+            # enabled for a deployment with enough memory.
+            tile_image = image.copy() if USE_TILED_INFERENCE else None
+            decoded_image = image
     except (UnidentifiedImageError, OSError):
         raise ValueError("Invalid image")
 
     decode_ms = (time.perf_counter() - decode_started) * 1000
     preprocess_started = time.perf_counter()
     decoded_image.thumbnail((INFERENCE_SIZE, INFERENCE_SIZE))
-    tile_image.thumbnail((PREPROCESS_MAX_SIDE, PREPROCESS_MAX_SIDE))
+    if tile_image is not None:
+        tile_image.thumbnail((PREPROCESS_MAX_SIDE, PREPROCESS_MAX_SIDE))
     inference_width, inference_height = decoded_image.size
     scale_x = original_width / inference_width
     scale_y = original_height / inference_height
@@ -332,8 +337,9 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
 
     tiled_detections = _collect_tiled_detections(
         tile_image, original_width, original_height, confidence
-    )
-    tile_image.close()
+    ) if tile_image is not None else []
+    if tile_image is not None:
+        tile_image.close()
     if tiled_detections:
         detections.extend(tiled_detections)
 
@@ -348,12 +354,27 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
 
     postprocess_started = time.perf_counter()
     waterlogging_started = time.perf_counter()
-    model_has_waterlogging = any(
-        d["class_name"].lower() == "waterlogging" for d in detections
-    )
-    if not model_has_waterlogging:
-        detections.extend(_detect_waterlogging(frame, scale_x, scale_y))
-        detections = _nms_by_class(detections, ROAD_NMS_IOU)
+    # Keep the prototype water detector available for regions the trained
+    # model did not classify. The API applies spatial/model-priority filtering
+    # so a heuristic result cannot replace a trained pothole or waterlogging.
+    heuristic_detections = _detect_waterlogging(frame, scale_x, scale_y)
+    model_waterlogging = [
+        d for d in detections
+        if d["class_name"].lower() == "waterlogging"
+        and d.get("detection_method") != "COMPUTER-VISION PROTOTYPE"
+    ]
+    # Preserve trained waterlogging predictions even if the prototype's large
+    # region would otherwise win class NMS by raw score.
+    heuristic_detections = [
+        heuristic for heuristic in heuristic_detections
+        if not any(
+            _box_iou(heuristic, model_water) >= 0.10
+            or _intersection_over_source(heuristic["bbox"], model_water["bbox"]) >= 0.35
+            for model_water in model_waterlogging
+        )
+    ]
+    detections.extend(heuristic_detections)
+    detections = _nms_by_class(detections, ROAD_NMS_IOU)
     waterlogging_ms = (time.perf_counter() - waterlogging_started) * 1000
 
     del frame
@@ -389,6 +410,14 @@ def _box_iou(a, b):
     return inter / max(1e-6, area_a + area_b - inter)
 
 
+def _intersection_over_source(source, other):
+    sx1, sy1, sx2, sy2 = source["x1"], source["y1"], source["x2"], source["y2"]
+    ox1, oy1, ox2, oy2 = other["x1"], other["y1"], other["x2"], other["y2"]
+    intersection = max(0, min(sx2, ox2) - max(sx1, ox1)) * max(0, min(sy2, oy2) - max(sy1, oy1))
+    source_area = max(0, sx2 - sx1) * max(0, sy2 - sy1)
+    return intersection / max(1e-6, source_area)
+
+
 def _fuse_same_class_evidence(detections):
     """Fuse corroborating full-frame/tile detections without inventing confidence."""
     if not detections:
@@ -409,12 +438,10 @@ def _fuse_same_class_evidence(detections):
                 used.add(j)
         best = max(group, key=lambda d: d["confidence"]).copy()
         if len(group) > 1:
-            # Independent-evidence fusion: P(any detector evidence is correct).
-            # This may increase confidence only when multiple passes agree.
-            miss_probability = 1.0
-            for item in group:
-                miss_probability *= 1.0 - max(0.0, min(1.0, float(item["confidence"])))
-            best["confidence"] = round(1.0 - miss_probability, 4)
+            # Multiple passes corroborate one box, but confidence remains the
+            # highest actual model score. Never turn low model confidence into
+            # an inflated percentage merely because passes agreed.
+            best["confidence"] = round(float(best["confidence"]), 4)
             best["raw_model_confidence"] = round(
                 max(float(item.get("raw_model_confidence", item["confidence"])) for item in group), 4
             )

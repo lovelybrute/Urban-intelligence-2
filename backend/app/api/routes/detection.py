@@ -32,6 +32,17 @@ def _bbox_iou(a, b):
     return inter / max(1e-6, area_a + area_b - inter)
 
 
+def _bbox_intersection_over_source(source, other):
+    """Return the fraction of ``source`` covered by ``other``."""
+    sx1, sy1, sx2, sy2 = source["x1"], source["y1"], source["x2"], source["y2"]
+    ox1, oy1, ox2, oy2 = other["x1"], other["y1"], other["x2"], other["y2"]
+    ix1, iy1 = max(sx1, ox1), max(sy1, oy1)
+    ix2, iy2 = min(sx2, ox2), min(sy2, oy2)
+    intersection = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1)
+    source_area = max(0.0, sx2 - sx1) * max(0.0, sy2 - sy1)
+    return intersection / max(1e-6, source_area)
+
+
 def _prefer_model_over_water_heuristic(detections):
     """Keep YOLO evidence authoritative over prototype water heuristics.
 
@@ -40,12 +51,11 @@ def _prefer_model_over_water_heuristic(detections):
     a competing waterlogging result.  Real model confidence values are left
     untouched.
     """
-    potholes = [
+    model_detections = [
         d for d in detections
-        if "pothole" in str(d.get("class_name", "")).lower()
-        and d.get("detection_method") != "COMPUTER-VISION PROTOTYPE"
+        if d.get("detection_method") != "COMPUTER-VISION PROTOTYPE"
     ]
-    if not potholes:
+    if not model_detections:
         return detections
 
     filtered = []
@@ -56,12 +66,15 @@ def _prefer_model_over_water_heuristic(detections):
         )
         if is_water_heuristic:
             box = detection.get("bbox")
-            conflicts_with_pothole = any(
-                box and pothole.get("bbox")
-                and _bbox_iou(box, pothole["bbox"]) >= 0.05
-                for pothole in potholes
+            conflicts_with_model = any(
+                box and model_detection.get("bbox")
+                and (
+                    _bbox_iou(box, model_detection["bbox"]) >= 0.10
+                    or _bbox_intersection_over_source(box, model_detection["bbox"]) >= 0.35
+                )
+                for model_detection in model_detections
             )
-            if conflicts_with_pothole:
+            if conflicts_with_model:
                 continue
         filtered.append(detection)
     return filtered

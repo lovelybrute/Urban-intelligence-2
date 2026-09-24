@@ -165,6 +165,8 @@ export const RoadView = ({
     detection.class_name === "waterlogging" &&
     (detection.requires_manual_verification === true ||
       /prototype|heuristic/i.test(detection.detection_method ?? ""));
+  const displayedConfidence = (detection: RoadDetectionResult["detections"][number]) =>
+    detection.raw_model_confidence ?? detection.confidence;
 
   return (
     <div
@@ -498,7 +500,7 @@ export const RoadView = ({
                             fontWeight: 900,
                           }}
                         >
-                          {isPrototypeWaterlogging(detection) ? `WATERLOGGING · CV score ${Math.round(detection.confidence * 100)}%` : `${detection.class_name.replace(/_/g, " ")} · AI confidence ${Math.round(detection.confidence * 100)}%`}
+                          {isPrototypeWaterlogging(detection) ? `WATERLOGGING · CV score ${Math.round(detection.confidence * 100)}%` : `${detection.class_name.replace(/_/g, " ")} · AI confidence ${Math.round(displayedConfidence(detection) * 100)}%`}
                         </span>
                       </div>
                     );
@@ -757,7 +759,7 @@ export const RoadView = ({
                             <div>Manual verification required</div>
                           </>
                         ) : (
-                          `${(detection.confidence * 100).toFixed(1)}% confidence`
+                          `${(displayedConfidence(detection) * 100).toFixed(1)}% confidence`
                         )}
                       </div>
                     </div>
@@ -797,7 +799,26 @@ export const RoadView = ({
                   size={18}
                   style={{ flexShrink: 0 }}
                 />
-                <span>{error}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <span>{error}</span>
+                  <button
+                    type="button"
+                    onClick={scanRoad}
+                    disabled={scanning}
+                    style={{
+                      border: "1px solid rgba(255,180,180,.35)",
+                      borderRadius: "8px",
+                      padding: "5px 9px",
+                      background: "rgba(255,255,255,.08)",
+                      color: "#ffd7d7",
+                      cursor: scanning ? "wait" : "pointer",
+                      fontWeight: 800,
+                      fontSize: "0.7rem",
+                    }}
+                  >
+                    Retry scan
+                  </button>
+                </span>
               </div>
             )}
 

@@ -45,14 +45,14 @@ class _CandidateResult:
 
 class _Model:
     def predict(self, **kwargs):
-        assert kwargs["source"].shape == (640, 640, 3)
+        assert kwargs["source"].shape == (160, 160, 3)
         assert kwargs["imgsz"] == 160
         return [_Result()]
 
 
 class _CandidateModel:
     def predict(self, **kwargs):
-        assert kwargs["source"].shape == (640, 640, 3)
+        assert kwargs["source"].shape == (160, 160, 3)
         assert kwargs["imgsz"] == 160
         return [_CandidateResult()]
 
@@ -82,11 +82,13 @@ def test_detection_scales_boxes_back_to_original_image(monkeypatch):
             "class_id": 0,
             "class_name": "pothole",
             "confidence": 0.875,
+            "raw_model_confidence": 0.875,
+            "detection_method": "CUSTOM YOLO / TRAINED MODEL",
             "bbox": {
-                "x1": 64.0,
-                "y1": 128.0,
-                "x2": 320.0,
-                "y2": 512.0,
+                "x1": 256.0,
+                "y1": 512.0,
+                "x2": 1280.0,
+                "y2": 2048.0,
             },
         }
     ]
@@ -107,3 +109,27 @@ def test_detection_uses_pretrained_pothole_model_when_available(monkeypatch):
 
     assert len(potholes) >= 1
     assert potholes[0]["confidence"] >= 0.875
+
+
+def test_model_confidence_is_not_boosted_by_multi_pass_fusion():
+    detections = [
+        {
+            "class_name": "pothole",
+            "confidence": 0.18,
+            "raw_model_confidence": 0.18,
+            "bbox": {"x1": 0, "y1": 0, "x2": 100, "y2": 100},
+        },
+        {
+            "class_name": "pothole",
+            "confidence": 0.16,
+            "raw_model_confidence": 0.16,
+            "bbox": {"x1": 2, "y1": 2, "x2": 98, "y2": 98},
+        },
+    ]
+
+    fused = road_detector._fuse_same_class_evidence(detections)
+
+    assert len(fused) == 1
+    assert fused[0]["confidence"] == 0.18
+    assert fused[0]["raw_model_confidence"] == 0.18
+    assert fused[0]["evidence_count"] == 2

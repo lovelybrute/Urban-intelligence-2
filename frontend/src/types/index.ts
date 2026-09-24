@@ -153,6 +153,7 @@ export interface RoadDetection {
   class_id: number;
   class_name: string;
   confidence: number;
+  raw_model_confidence?: number;
   bbox: RoadDetectionBox;
   detection_method?: string;
   requires_manual_verification?: boolean;
