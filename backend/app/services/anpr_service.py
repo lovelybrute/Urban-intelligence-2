@@ -8,8 +8,8 @@ import importlib.util
 import time
 
 SERVICE_FILE = Path(__file__).resolve()
-ROOT = SERVICE_FILE.parents[3]
-EDGE_ANPR = ROOT / "edge" / "processors" / "anpr.py"
+ROOT = SERVICE_FILE.parents[1]
+EDGE_ANPR = ROOT / "processors" / "anpr.py"
 _spec = importlib.util.spec_from_file_location("urban_edge_anpr", EDGE_ANPR)
 if _spec is None or _spec.loader is None:
     raise ImportError(f"Cannot load ANPR processor from {EDGE_ANPR}")
