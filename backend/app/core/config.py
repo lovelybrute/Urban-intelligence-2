@@ -54,7 +54,7 @@ class Settings(BaseSettings):
 
     # ML Models
     YOLO_MODEL_PATH: str = _preferred_weight("traffic_india.pt", "traffic_coco.pt")
-    ROAD_DEFECT_MODEL_PATH: str = os.path.join(_REPO_DIR, "frontend", "ml", "weights", "road_defect_best.pt")
+    ROAD_DEFECT_MODEL_PATH: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "weights", "road_defect_best.pt")
     ANPR_MODEL_PATH: str = os.path.join(_REPO_DIR, "frontend", "ml", "weights", "anpr_plate.pt")
     INFRASTRUCTURE_MODEL_PATH: str = os.path.join(_REPO_DIR, "frontend", "ml", "weights", "infrastructure.pt")
 
@@ -76,3 +76,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

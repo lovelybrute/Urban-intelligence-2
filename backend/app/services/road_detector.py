@@ -21,7 +21,7 @@ except ImportError:  # Optional: edge nodes normally perform GPU inference.
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-PT_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.pt"
+PT_MODEL_PATH = Path(__file__).resolve().parents[1] / "weights" / "road_defect_best.pt"
 ONNX_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.onnx"
 PRETRAINED_POTHOLE_MODEL_PATHS = [
     PROJECT_ROOT / "frontend" / "ml" / "weights" / "candidates" / "vinothvikas1987_road_distress_yolov8_best.pt",
@@ -550,3 +550,4 @@ def road_model_health():
         "model_load_ms": _model_load_ms,
         "model_warmup_ms": _model_warmup_ms,
     }
+
