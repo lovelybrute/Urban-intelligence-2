@@ -22,6 +22,7 @@ except ImportError:  # Optional: edge nodes normally perform GPU inference.
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PT_MODEL_PATH = Path(__file__).resolve().parents[1] / "weights" / "road_defect_best.pt"
+WATERLOGGING_MODEL_PATH = Path(__file__).resolve().parents[1] / "weights" / "waterlogging_best.pt"
 ONNX_MODEL_PATH = PROJECT_ROOT / "frontend" / "ml" / "weights" / "road_defect_best.onnx"
 PRETRAINED_POTHOLE_MODEL_PATHS = [
     PROJECT_ROOT / "frontend" / "ml" / "weights" / "candidates" / "vinothvikas1987_road_distress_yolov8_best.pt",
@@ -34,6 +35,7 @@ USE_ONNX = os.getenv("ROAD_AI_USE_ONNX", "0").strip().lower() in {"1", "true", "
 MODEL_PATH = ONNX_MODEL_PATH if USE_ONNX and ONNX_MODEL_PATH.exists() else PT_MODEL_PATH
 
 _model = None
+_waterlogging_model = None
 _pretrained_pothole_model = None
 _pretrained_pothole_model_path = None
 _inference_lock = threading.Lock()
@@ -84,6 +86,22 @@ def get_model():
     return _model
 
 
+def get_waterlogging_model():
+    """Load the dedicated trained waterlogging segmentation model."""
+    global _waterlogging_model
+
+    if YOLO is None:
+        return None
+
+    if not WATERLOGGING_MODEL_PATH.exists():
+        return None
+
+    if _waterlogging_model is None:
+        _waterlogging_model = YOLO(str(WATERLOGGING_MODEL_PATH))
+
+    return _waterlogging_model
+
+
 def get_pretrained_pothole_model():
     global _pretrained_pothole_model, _pretrained_pothole_model_path
     if YOLO is None:
@@ -131,6 +149,59 @@ def warm_road_model():
                 raise
         _model_warmup_ms = round((time.perf_counter() - started) * 1000, 2)
     return model
+
+
+def _collect_waterlogging_detections(
+    frame,
+    scale_x,
+    scale_y,
+    confidence=0.50,
+):
+    """Run the dedicated waterlogging model and return API-compatible boxes."""
+    model = get_waterlogging_model()
+
+    if model is None:
+        return []
+
+    with _inference_lock:
+        results = model.predict(
+            source=frame,
+            conf=confidence,
+            verbose=False,
+            imgsz=640,
+            iou=0.70,
+            max_det=100,
+            device="cpu",
+        )
+
+    detections = []
+
+    for result in results:
+        if result.boxes is None:
+            continue
+
+        for box in result.boxes:
+            score = float(box.conf[0].item())
+
+            if score < confidence:
+                continue
+
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+
+            detections.append({
+                "class_id": 0,
+                "class_name": "waterlogging",
+                "confidence": score,
+                "bbox": {
+                    "x1": round(x1 * scale_x, 2),
+                    "y1": round(y1 * scale_y, 2),
+                    "x2": round(x2 * scale_x, 2),
+                    "y2": round(y2 * scale_y, 2),
+                },
+                "detection_method": "CUSTOM YOLO / WATERLOGGING SEGMENTATION",
+            })
+
+    return detections
 
 
 def _collect_road_model_detections(frame, scale_x, scale_y, confidence, imgsz=None):
@@ -354,6 +425,17 @@ def detect_road_defects(raw: bytes, confidence: float = 0.12):
 
     postprocess_started = time.perf_counter()
     waterlogging_started = time.perf_counter()
+
+    # Run the dedicated trained waterlogging model first.
+    trained_waterlogging = _collect_waterlogging_detections(
+        frame,
+        scale_x,
+        scale_y,
+        confidence=0.50,
+    )
+    if trained_waterlogging:
+        detections.extend(trained_waterlogging)
+
     # Keep the prototype water detector available for regions the trained
     # model did not classify. The API applies spatial/model-priority filtering
     # so a heuristic result cannot replace a trained pothole or waterlogging.
